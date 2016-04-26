@@ -5,61 +5,89 @@
 #include "tables.h"
 #include "huffman.h"
 
-static int test_hf_string_encode_3bytes(){
+static int testhf_byte_encode_3bytes(){
 	char b[10];
 	b[0] = 0;
 	b[1] = 0;
-	int r = _hf_string_encode('a', 8, &b[0]);
-	r = _hf_string_encode('p', r, &b[0]);
-	r = _hf_string_encode('p', r, &b[1]);
+	int r = hf_byte_encode('a', 8, &b[0]);
+	r = hf_byte_encode('p', r, &b[0]);
+	r = hf_byte_encode('p', r, &b[1]);
 	if( r ==7 && b[0] == 0x1d && b[1] == 0x75) return 1;
 	printf("expected 7:%d , %d:%d, %d:%d\n", r,0x1d,b[0], 0x75, b[1]);
 	return 0;
 }
 
-static int test_hf_string_encode_2bytes(){
+static int testhf_byte_encode_2bytes(){
 	char b[10];
 	b[0] = 0;
-	int r = _hf_string_encode('a', 8, &b[0]);
-	r = _hf_string_encode('p', r, &b[0]);
+	int r = hf_byte_encode('a', 8, &b[0]);
+	r = hf_byte_encode('p', r, &b[0]);
 	if( r ==5 && b[0] == 0x1d) return 1;
 	printf("expected 3:%d , %d:%d\n", r,0x18,b[0]);
 	return 0;
 }
 
-static int test_hf_string_encode_1byte(){
+static int testhf_byte_encode_1byte(){
 	char b[10];
 	b[0] = 0;
-	int r = _hf_string_encode('a', 8, b);
+	int r = hf_byte_encode('a', 8, b);
 	if( r ==3 && b[0] == 0x18) return 1;
 	printf("expected 3:%d , %d:%d\n", r,0x18,b[0]);
 	return 0;
 }
 
-void test_all(){
-	printf("test_hf_string_encode_1byte():%s\n",
-			test_hf_string_encode_1byte()?"PASS":"FAILED");
-	printf("test_hf_string_encode_2bytes():%s\n",
-			test_hf_string_encode_2bytes()?"PASS":"FAILED");
-	printf("test_hf_string_encode_3bytes():%s\n",
-			test_hf_string_encode_3bytes()?"PASS":"FAILED");
+int test_hf_integer_encode_1337(){
+    unsigned char buff[10];
+	memset(buff, 0 ,10);
+	hf_integer_encode(1337, 5, buff);
+    if( buff[0] == 31   &&
+        buff[1] == 154  &&
+        buff[2] == 10   &&
+        buff[3] == 0
+    ){
+        return 1;
+    }else{
+        printf("Dedode 1377 expected:31:154:10:0, %u:%u:%u:%u\n", buff[0],buff[1],buff[2],buff[3]);
+        return 0;
+    }
+    return 0;    
 }
 
-int main(){
-
-	unsigned char buff[10];
+int test_hf_integer_encode_b(){
+    unsigned char buff[10];
 	memset(buff, 0 ,10);
-	hf_integer_encode((unsigned int)1337, 5, buff);
-	printf("test Dedode 1337: %u:%u:%u:%u:%u\n", buff[0],buff[1],buff[2],buff[3],buff[4]);
+	hf_integer_encode('b', 5, buff);
+    if( buff[0] == 31   &&
+        buff[1] == 67   &&
+        buff[2] == 0
+    ){
+        return 1;
+    }else{
+        printf("Dedode b expected:31:67:0, %u:%u:%u:\n", buff[0],buff[1],buff[2]);
+        return 0;
+    }
+    return 0;    
+}
 
-	char dec_buff[10];
-	memset(dec_buff, 0 ,10);
-	hf_integer_decode(buff, 5, dec_buff);
-	printf("test Dedode 'p': %u:%u:%u:%u:%u\n", dec_buff[0],dec_buff[1],dec_buff[2],dec_buff[3],dec_buff[4]);
-	
+int test_hf_integer_encode(unsigned int d){
+    unsigned char buff[10];
+	memset(buff, 0 ,10);
+	hf_integer_encode(d, 5, buff);
+    if( buff[0] == 31   &&
+        buff[1] == 154  &&
+        buff[2] == 10 &&
+        buff[3] == 0
+    ){
+        return 1;
+    }else{
+        printf("Dedode %d expected:31:154:10:0, %u:%u:%u:%u\n",d, buff[0],buff[1],buff[2],buff[3]);
+        return 0;
+    }
+    return 0;    
+}
 
-	char *bin = "application/grpc";
-	unsigned char bout[10];
+int test_hf_string_encode(char *bin){
+	unsigned char bout[100];
 	memset(bout, 0, 48);
 	int sz = 0;
 	printf("== test hf_string_encode ==\n");
@@ -81,24 +109,53 @@ int main(){
 		bout[10] == 0x64 &&
 		sz == 0xb
 	){
-		printf("hf_string_encode(): PASS\n");
+        return 1;
 	}else{
 		printf("hf_string_encode(): FAILED\n");
 		hf_print_hex(bout, sz);
+        return 0;
 	}	
-	
-	test_all();
 
+}
+
+int test_hf_string_decode(char *bin){
 	hf_init();
     char out_buff[128];
-	int size = hf_decode_string(bout, sz , out_buff, 128);
+	unsigned char bout[100];
+    int sz = 0;
+    hf_string_encode(bin, (int)strlen(bin), 0, bout, &sz);
+    int size = hf_string_decode(bout, sz , out_buff, 128);
 	if( strncmp(out_buff, bin, size) == 0){
-		printf("hf_decode_string():PASS\n");
+        return 1;
 	}else{
-		printf("hf_decode_string():FAILED\n");
 		hf_print_hex(out_buff, size);
+        return 0;
 	}
-	
+
+}
+
+void test_all(){
+	printf("testhf_byte_encode_1byte():%s\n",
+			testhf_byte_encode_1byte()?"\033[1;37\033[1;42mPASS\033[0m":"\033[1;31mFAILED\033[0m");
+	printf("testhf_byte_encode_2bytes():%s\n",
+			testhf_byte_encode_2bytes()?"\033[1;37\033[1;42mPASS\033[0m":"\033[1;31mFAILED\033[0m");
+	printf("testhf_byte_encode_3bytes():%s\n",
+			testhf_byte_encode_3bytes()?"\033[1;37\033[1;42mPASS\033[0m":"\033[1;31mFAILED\033[0m");
+	printf("test_hf_integer_encode():%s\n",
+			test_hf_integer_encode_1337()?"\033[1;37\033[1;42mPASS\033[0m":"\033[1;31mFAILED\033[0m");
+    printf("test_hf_integer_encode():%s\n",
+			test_hf_integer_encode_b()?"\033[1;37\033[1;42mPASS\033[0m":"\033[1;31mFAILED\033[0m");
+    printf("test_hf_string_encode():%s\n",
+			test_hf_string_encode("application/grpc")?"\033[1;37\033[1;42mPASS\033[0m":"\033[1;31mFAILED\033[0m");
+    printf("test_hf_string_encode():%s\n",
+            test_hf_string_decode("application/grpc")?"\033[1;37\033[1;42mPASS\033[0m":"\033[1;31mFAILED\033[0m");
+
+}
+
+int main(){
+
+	test_all();
+
 	return 0;
 }
 
