@@ -1,5 +1,7 @@
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
+
 #include "huffman.h"
 #include "tables.h"
 
@@ -58,7 +60,7 @@ int hf_init(){
 	return 0;
 }
 
-static int _hf_string_encode(unsigned char ch, int remain, unsigned char *buff){
+int hf_byte_encode(unsigned char ch, int remain, unsigned char *buff){
 	unsigned char t = 0;
 	int i			= 0;
 	int codes		= HEX_TO_HF_CODE(ch);
@@ -94,12 +96,7 @@ int hf_string_encode(char *buff_in, int size, int prefix, unsigned char *buff_ou
 		}else{
 			nbytes = ((HEX_TO_HF_CODE_LEN(buff_in[i]) - remain) / 8)+1;
 		}
-		printf("index						:%d\n",i);
-		printf("remain						:%d\n", remain);
-		printf("HF LEN						:%d\n", HEX_TO_HF_CODE_LEN(buff_in[i]));
-		printf("nbyte						:%d\n", nbytes);
-		printf("buffer_out					:%d\n", j);
-		remain = _hf_string_encode( buff_in[i], remain, &buff_out[j]);
+		remain = hf_byte_encode( buff_in[i], remain, &buff_out[j]);
 		j += nbytes;
 	}
 
@@ -162,7 +159,7 @@ int hf_string_decode(unsigned char *enc, int enc_sz, char *out_buff, int out_sz)
 	return at;
 }
 
-int hf_interger_encode(unsigned int enc_binary, int nprefix, unsigned char *buff){
+int hf_integer_encode(unsigned int enc_binary, int nprefix, unsigned char *buff){
 	int i = 0;
 	unsigned int ch	    = enc_binary;
 	unsigned int ch2    = 0;
