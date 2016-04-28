@@ -39,6 +39,12 @@ enum HTTP2_RETURN_ERROR_CODES{
     HTTP2_RETURN_NULL_POINTER           = -201,
 };
 
+typedef struct HTTP2_FRAME_BUFFER{
+    int size;
+    int len;
+    unsigned char buff[1];
+}HTTP2_FRAME_BUFFER;
+
 typedef struct HTTP2_FRAME_FORMAT{
     unsigned int length;            //24 bits
     int type;                       //8 bits
@@ -81,6 +87,6 @@ typedef struct HTTP2_PLAYLOAD_SETTINGS{
 
 HTTP2_FRAME_FORMAT * HTTP2_frame_create();
 void * HTTP2_playload_create(int ftype);
-int HTTP2_playload_add(HTTP2_FRAME_FORMAT **frame, int type, void *playload, unsigned int streamID);
+int HTTP2_FRAME_add_playload(HTTP2_FRAME_FORMAT **frame, int type, void *playload, unsigned int streamID);
 
 #endif 
