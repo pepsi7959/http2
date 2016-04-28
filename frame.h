@@ -39,22 +39,20 @@ enum HTTP2_RETURN_ERROR_CODES{
     HTTP2_RETURN_NULL_POINTER           = -201,
 };
 
-typedef struct 
-
 typedef struct HTTP2_FRAME_FORMAT{
     unsigned int length;            //24 bits
     int type;                       //8 bits
     int flags;                      //8 bits
-    int reseved;                    //1 bits
+    int reserved;                    //1 bits
     unsigned int streamID;          //31 bits
     void * playload;
-}HTTP_FRAME_FORMAT;
+}HTTP2_FRAME_FORMAT;
 
 typedef struct HTTP2_PLAYLOAD_DATA{
     int padding_length;             //8 bits  
     void *data;                     //Application data
     void *padding;                  //
-};
+}HTTP2_PLAYLOAD_DATA;
 
 typedef struct HTTP2_PLOYLOAD_HEADERS{
     int padding_length;             //8 bits  
@@ -63,23 +61,23 @@ typedef struct HTTP2_PLOYLOAD_HEADERS{
     unsigned int stream_dependency; //
     int weigth;                     //8 bits
     void *header_block_fragment;    //header data
-};
+}HTTP2_PLOYLOAD_HEADERS;
 
 typedef struct HTTP2_PLAYLOAD_PRIORITY{
     int is_exclusive;
     unsigned int stream_dependency;
     int weigth;
-};
+}HTTP2_PLAYLOAD_PRIORITY;
 
 typedef struct HTTP2_PLAYLOAD_WINDOW_UPDATE{
     int reserved;
     unsigned int window_size_increment;  
-};
+}HTTP2_PLAYLOAD_WINDOW_UPDATE;
 
 typedef struct HTTP2_PLAYLOAD_SETTINGS{
     int id;
     unsigned int value;
-};
+}HTTP2_PLAYLOAD_SETTINGS;
 
 HTTP2_FRAME_FORMAT * HTTP2_frame_create();
 void * HTTP2_playload_create(int ftype);

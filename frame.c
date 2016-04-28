@@ -1,8 +1,9 @@
+#include <stdlib.h>
+#include <stdio.h>
 #include "frame.h"
 
-
 HTTP2_FRAME_FORMAT * HTTP2_frame_create(){
-    HTTP2_FRAME_FROMAT *frame = malloc(1 * sizeof(HTTP2_FRAME_FROMAT));
+    HTTP2_FRAME_FORMAT *frame = malloc(1 * sizeof(HTTP2_FRAME_FORMAT));
     frame->length   = 0;
     frame->type     = 0;
     frame->flags    = 0;
@@ -13,23 +14,26 @@ HTTP2_FRAME_FORMAT * HTTP2_frame_create(){
 }
 
 void * HTTP2_playload_create(int ftype){
-    void *playload = NULL;
     switch(ftype){
         case HTTP2_FRAME_DATA:
-            playload = malloc(sizeof(HTTP2_PLAYLOAD_DATA));
+        { 
+            HTTP2_PLAYLOAD_DATA *playload = malloc(sizeof(HTTP2_PLAYLOAD_DATA));
             playload->padding_length        = 0;
             playload->data                  = NULL;
             playload->padding               = NULL;
-            break;
+            return (void*)playload;
+        }
         case HTTP2_FRAME_HEADES:
-            playload = malloc(sizeof(HTTP2_PLOYLOAD_HEADERS));
+        {
+            HTTP2_PLOYLOAD_HEADERS *playload = malloc(sizeof(HTTP2_PLOYLOAD_HEADERS));
             playload->padding_length        = 0;
             playload->is_exclusive          = 0;
             playload->stream_dependency     = 0;
             playload->weigth                = 0;
             playload->padding               = NULL;
             playload->header_block_fragment = NULL;
-            break;
+            return (void*)playload;
+        }
         case HTTP2_FRAME_PRIORITY:    
             printf("HTTP2_RETURN_UNIMPLEMENTED\n");
             break;
@@ -37,9 +41,12 @@ void * HTTP2_playload_create(int ftype){
             printf("HTTP2_RETURN_UNIMPLEMENTED\n");
             break;
         case HTTP2_FRAME_SETTINGS:  
+        {
+            HTTP2_PLAYLOAD_SETTINGS *playload  = malloc(1 * sizeof(HTTP2_PLAYLOAD_SETTINGS));
             playload->id                    = 0;
             playload->value                 = 0;
-            break;
+            return (void*)playload;
+        }
         case HTTP2_FRAME_PUSH_PROMISE:
             printf("HTTP2_RETURN_UNIMPLEMENTED\n");
             break;
@@ -50,17 +57,20 @@ void * HTTP2_playload_create(int ftype){
             printf("HTTP2_RETURN_UNIMPLEMENTED\n");
             break;
         case HTTP2_FRAME_WINDOW_UPDATE:
+        {
+            HTTP2_PLAYLOAD_WINDOW_UPDATE *playload = malloc(1 * sizeof(HTTP2_PLAYLOAD_WINDOW_UPDATE));
             playload->reserved                  = 0;
-            playload->window_size_increament    = 0;
+            playload->window_size_increment     = 0;
+            return (void*)playload;
+        }
         case HTTP2_FRAME_CONTINUATION:
             printf("HTTP2_RETURN_UNIMPLEMENTED\n");
             break;
         default:
             printf("HTTP2_RETURN_INVALID_FRAME_TYPE\n");
-            return HTTP2_RETURN_INVALID_FRAME_TYPE;
-        break;
+            break;
     }
-    return playload;
+    return NULL;
 }
 
 int HTTP2_FRAME_add_playload(HTTP2_FRAME_FORMAT **frame, int type, void *playload, unsigned int streamID){
@@ -72,5 +82,5 @@ int HTTP2_FRAME_add_playload(HTTP2_FRAME_FORMAT **frame, int type, void *playloa
     p_frame->type = type;
     p_frame->playload = playload;
     p_frame->streamID = streamID;
-    return 0
+    return 0;
 }
