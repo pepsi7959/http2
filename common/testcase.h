@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-extern int numberOfCase;
+static int numberOfCase = 0;
 static int successed  = 0;
 static int failed     = 0;
 
