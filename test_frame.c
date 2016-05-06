@@ -80,11 +80,54 @@ int test_HTTP2_frame_createe(){
     return TEST_RESULT_FAILED;
 }
 
+int test_HTTP2_frame_decode(){
+    HTTP2_BUFFER *buffer = (HTTP2_BUFFER*)malloc(sizeof(HTTP2_BUFFER)+1024);
+    memset(buffer, 0, sizeof(HTTP2_BUFFER) + 1024);
+    HTTP2_FRAME_FORMAT *frame = NULL;
+    char error[1024];
+    
+    unsigned char HTTP2_DEFAULT_FRAME_SETTING[]     = {0x00,0x00,0x00,0x04,0x00,0x00,0x00,0x00,0x00};
+    unsigned char HTTP2_DEFAULT_FRAME_SETTING_ACK[] = {0x00,0x00,0x00,0x04,0x01,0x00,0x00,0x00,0x00};
+    unsigned char HTTP2_DEFAULT_FRAME_WINDOWS[]     = {0x00,0x00,0x04,0x08,0x00,0x88,0x01,0x00,0x00,
+                                                            0x00,0x0e,0xff,0x01};
+    memcpy(buffer->data,HTTP2_DEFAULT_FRAME_SETTING, sizeof(HTTP2_DEFAULT_FRAME_SETTING));
+    buffer->len = (int)sizeof(HTTP2_DEFAULT_FRAME_SETTING);
+    ASSERT( HTTP2_frame_decode(buffer, &frame, error) == HTTP2_RETURN_NO_ERROR );
+    ASSERT( frame->length == 0 );
+    ASSERT( frame->type == HTTP2_FRAME_SETTINGS );
+    ASSERT( frame->flags == 0 );
+    ASSERT( frame->reserved == 0);
+    ASSERT( frame->streamID == 0);
+    
+    memset(buffer, 0, sizeof(HTTP2_BUFFER) + 1024);
+    memcpy(buffer->data,HTTP2_DEFAULT_FRAME_SETTING_ACK, sizeof(HTTP2_DEFAULT_FRAME_SETTING_ACK));
+    buffer->len = (int)sizeof(HTTP2_DEFAULT_FRAME_SETTING_ACK);
+    ASSERT( HTTP2_frame_decode(buffer, &frame, error) == HTTP2_RETURN_NO_ERROR );
+    ASSERT( frame->length == 0 );
+    ASSERT( frame->type == HTTP2_FRAME_SETTINGS );
+    ASSERT( frame->flags == 1 );
+    ASSERT( frame->reserved == 0);
+    ASSERT( frame->streamID == 0);
+    
+    memset(buffer, 0, sizeof(HTTP2_BUFFER) + 1024);
+    memcpy(buffer->data,HTTP2_DEFAULT_FRAME_WINDOWS, sizeof(HTTP2_DEFAULT_FRAME_WINDOWS));
+    buffer->len = (int)sizeof(HTTP2_DEFAULT_FRAME_WINDOWS);
+    ASSERT( HTTP2_frame_decode(buffer, &frame, error) == HTTP2_RETURN_NO_ERROR );
+    ASSERT( frame->length == 4 );
+    ASSERT( frame->type == HTTP2_FRAME_WINDOW_UPDATE );
+    ASSERT( frame->flags == 0 );
+    ASSERT( frame->reserved == 1);
+    ASSERT( frame->streamID == 0x8010000);
+    
+    return TEST_RESULT_SUCCESSED;
+}
+
 void test_all(){
     /* register testing function */
     UNIT_TEST(test_HTTP2_playload_add());
     UNIT_TEST(test_HTTP2_frame_createe());
     UNIT_TEST(test_HTTP2_playload_create());
+    UNIT_TEST(test_HTTP2_frame_decode());
     REPORT();
 }
 

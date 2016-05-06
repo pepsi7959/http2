@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "frame.h"
 
 HTTP2_FRAME_FORMAT * HTTP2_frame_create(){
@@ -83,4 +84,94 @@ int HTTP2_FRAME_add_playload(HTTP2_FRAME_FORMAT **frame, int type, void *playloa
     p_frame->playload = playload;
     p_frame->streamID = streamID;
     return 0;
+}
+
+int HTTP2_frame_decode(HTTP2_BUFFER **pbuffer, HTTP2_FRAME_FORMAT **frame, char *error){
+    unsigned int tmp_uint       = 0;
+    HTTP2_FRAME_FORMAT *nframe  = NULL;
+    HTTP2_BUFFER *buffer = *pbuffer;
+    if( buffer == NULL ){
+        if( error != NULL){sprintf(error, "The Buffer is empty.");}
+        return HTTP2_RETURN_NULL_POINTER;
+    }
+        
+    if( buffer->len < MINIMUM_FRAME_SIZE ){
+        if( error != NULL){sprintf(error, "The Buffer size is less then minimum frame size[%d]", buffer->len);}
+        return HTTP2_RETURN_NEED_MORE_DATA;
+    }
+    
+    if( frame == NULL ){
+        if( error != NULL){sprintf(error, "Frame is empty.");}
+        return HTTP2_RETURN_NULL_POINTER;
+    }
+    if( *frame == NULL ){
+        nframe = HTTP2_frame_create();
+        if( nframe == NULL ){ 
+            if( error != NULL){
+                sprintf(error, "Cannot allocate memory.");
+            }
+            return HTTP2_RETURN_ERROR_MEMORY;
+        }
+        *frame = nframe;
+    }else{
+        nframe = *frame;
+    }
+    
+    READBYTE(buffer->data, buffer->cur, 3, tmp_uint);
+    nframe->length   = (unsigned int)tmp_uint;
+    if( (nframe->length + MINIMUM_FRAME_SIZE) > buffer->len ){
+        if( error != NULL){sprintf(error, "Need more data to decode playload (frame len=%d,buff len=%d)", nframe->length, buffer->len);}
+        return HTTP2_RETURN_NEED_MORE_DATA;
+    }
+    buffer->cur += 3;
+    tmp_uint = 0;
+    
+    READBYTE(buffer->data, buffer->cur, 1, tmp_uint);
+    nframe->type     = (int)tmp_uint;
+    buffer->cur += 1;
+    tmp_uint = 0;
+    
+    READBYTE(buffer->data, buffer->cur, 1, tmp_uint);
+    nframe->flags     = (int)tmp_uint;
+    buffer->cur += 1;
+    tmp_uint = 0;
+    
+    READBYTE(buffer->data, buffer->cur, 1, tmp_uint);
+    nframe->reserved = (int)(tmp_uint >> 7);
+    tmp_uint = 0;
+    
+    READBYTE(buffer->data, buffer->cur, 4, tmp_uint);
+    nframe->streamID = (tmp_uint & 0x7FFFFFFF);
+    buffer->cur += 4;
+    tmp_uint = 0;
+    
+    if( nframe->length > 0 ){
+        if( buffer->len - buffer->cur > nframe->length ){
+            //TODO: decode playload
+        }
+        buffer->len = buffer->len - (MINIMUM_FRAME_SIZE + nframe->length);
+        memmove(buffer->data, buffer->data+(MINIMUM_FRAME_SIZE + nframe->length), buffer->len);
+        buffer->cur = 0;
+    }else{
+        buffer->len = buffer->len - buffer->cur;
+        memmove(buffer->data, buffer->data+buffer->cur, buffer->len);
+        buffer->cur = 0;
+    }
+    
+    switch( nframe->type ){
+        case HTTP2_FRAME_DATA:break;
+        case HTTP2_FRAME_HEADES:break;
+        case HTTP2_FRAME_PRIORITY:break;
+        case HTTP2_FRAME_RST_STREAM:break;
+        case HTTP2_FRAME_SETTINGS:break;
+        case HTTP2_FRAME_PUSH_PROMISE:break;        
+        case HTTP2_FRAME_PING:break;
+        case HTTP2_FRAME_GOAWAY:break;  
+        case HTTP2_FRAME_WINDOW_UPDATE:break;
+        case HTTP2_FRAME_CONTINUATION:break;
+        default : 
+            if( error != NULL) sprintf(error, "Unknown frame type [%d]", nframe->type);
+            return HTTP2_RETURN_INVALID_FRAME_TYPE;
+    }
+    return HTTP2_RETURN_NO_ERROR;
 }
