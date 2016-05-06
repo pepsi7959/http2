@@ -1,23 +1,36 @@
 #ifndef HTTP2_H
  #define HTTP2_H
+ #include "common.h"
 
 #define HTTP2_MAX_STRING_HOST                   128
 #define HTTP2_MAX_CONNECTION                    4096
 #define HTTP2_MAX_HOST_NAME                     1024
 #define HTTP2_MAX_WRITE_BUFFER_SIZE             (4*1024*1024)
 #define HTTP2_MAX_READ_BUFFER_SIZE              (4*1024*1024)
+#define HTTP2_MAX_BUFFER_SISE                   (4096)
 
 enum HTTP2_CONNECTION_STATE{
     HTTP2_CONNECTION_STATE_OPEN = 0,
+    HTTP2_CONNECTION_STATE_SETUP,
+    HTTP2_CONNECTION_STATE_CONNECTING,
+    HTTP2_CONNECTION_STATE_READY,
+    HTTP2_CONNECTION_STATE_WAITING,
+    
+    HTTP2_CONNECTION_STATE_LAST
 };
 
-enum HTTP2_RET_ERR_CODE{
+enum HTTP2_RET_CODE{
+    HTTP2_RET_NEED_MORE_DATA    = 3,
+    HTTP2_RET_READY             = 2,
+    HTTP2_RET_SENT              = 1,
     HTTP2_RET_OK                = 0,
     HTTP2_RET_INVALID_PARAMETER = -1,
     HTTP2_RET_MAX_CONNECTION    = -2,
     HTTP2_RET_UNAVAILABLE       = -3,
     HTTP2_RET_ERR_CONNECT       = -4,
     HTTP2_RET_ERR_MEMORY        = -5,
+    HTTP2_RET_ERR_SEND          = -6,
+    HTTP2_RET_ERR_DECODE        = -7,
 };
 
 typedef struct _clnt_addr_t{
@@ -28,14 +41,7 @@ typedef struct _clnt_addr_t{
     int   connection_type;              // type = [ONLINE|STANDBY], default=ONLINE
 }HTTP2_CLNT_ADDR;
 
-typedef struct _buffer_t{
-    struct HTTP2_buffer_t *prev;
-    struct HTTP2_buffer_t *next;
-    int size;
-    int len;
-    int cur;
-    char data[1];
-}HTTP2_BUFFER;
+typedef struct _buffer_t HTTP2_BUFFER;
 
 typedef struct _connection_t{
     struct _connection_t    *next;
@@ -63,6 +69,7 @@ typedef struct _connection_t{
     time_t				    read_time;
     time_t				    write_time;
     time_t				    active_time;
+    time_t                  keepalive_time;
     
     struct timeval          timestamp_read;
     struct timeval          timestamp_write;
@@ -82,6 +89,7 @@ typedef struct _host_t{
     int                     max_connection;
     int                     max_concurrent;
     int                     max_wbuffer;
+    int                     keepalive;
                         
     int                     wait_timeout;
     int                     connect_timeout;
@@ -104,21 +112,22 @@ typedef struct _host_t{
     HTTP2_BUFFER            *send_msg_queue;
 }HTTP2_HOST;
 
-extern HTTP2_HOST       *HTTP2_HOSTS[];
+extern HTTP2_HOST *HTTP2_HOSTS[];
+
 
 int HTTP2_open(HTTP2_HOST *host, HTTP2_CONNECTION **connect, char *error);      /* Estrabishes connnection to sever */
-int HTTP2_connect(int secure_conn);                                             /* Initialize HTTP2 PREFACE, setting, and widows updates*/
-int HTTP2_read();                       /* Read from TCP's buffer */
-int HTTP2_write();                      /* Write data to TCP's buffer */
-int HTTP2_close();                      /* Close connection */
-
+int HTTP2_connect(HTTP2_HOST *hc, char *error);                                 /* Initialize HTTP2 PREFACE, setting, and widows updates*/
+int HTTP2_write(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, char *error);           /* Write data to TCP's buffer */
+int HTTP2_read(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, char *error);            /* Read from TCP's buffer */
+int HTTP2_close();                                                              /* Close connection */
+int HTTP2_decode(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, char *error);
+int HTTP2_encode(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, char *error);
 int HTTP2_stream_open(int streamID);
 int HTTP2_stream_close(int streamID);
 
 int HTTP2_send_msg_to_queue(char *group, HTTP2_BUFFER *buffer);
 
-int HTTP2_decode();
-int HTTP2_encode();
+
 
 
 
