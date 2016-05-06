@@ -4,10 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-static int numberOfCase = 0;
-static int successed  = 0;
-static int failed     = 0;
-
 enum TEST_RESULT{
     TEST_RESULT_SUCCESSED  = 1,
     TEST_RESULT_FAILED     = 0,
@@ -29,4 +25,28 @@ enum TEST_RESULT{
     printf("|Success    : %d\n", successed);    \
     printf("|Failure    : %d\n", failed);       \
 }while(0);
+ 
+#define DEBUG(...) do{                                      \
+    printf("%s|%s|%d|",__FILE__,__func__, __LINE__);        \
+    printf(__VA_ARGS__);                                    \
+    printf("\n");                                           \
+}while(0)
+    
+#define ASSERT(...)do{                                      \
+    if( !(__VA_ARGS__) ){                                   \
+        DEBUG(#__VA_ARGS__);                                \
+        if( error != NULL)                                  \
+            DEBUG("%s\n", error);                           \
+        return TEST_RESULT_FAILED;                          \
+    }                                                       \
+}while(0);
+
+#define WAIT() getchar()
+
+static int numberOfCase = 0;
+static int successed  = 0;
+static int failed     = 0;
+
+extern char error[];
+
 #endif
