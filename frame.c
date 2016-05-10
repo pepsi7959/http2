@@ -86,10 +86,105 @@ int HTTP2_FRAME_add_playload(HTTP2_FRAME_FORMAT **frame, int type, void *playloa
     return 0;
 }
 
-int HTTP2_frame_decode(HTTP2_BUFFER **pbuffer, HTTP2_FRAME_FORMAT **frame, char *error){
+int HTTP2_playload_decode(HTTP2_BUFFER *buffer, HTTP2_FRAME_FORMAT *frame, char *error){
+    switch(frame->type){
+        case HTTP2_FRAME_DATA:
+        { 
+            HTTP2_PLAYLOAD_DATA *playload = malloc(sizeof(HTTP2_PLAYLOAD_DATA));
+            playload->padding_length        = 0;
+            playload->data                  = NULL;
+            playload->padding               = NULL;
+            playload->padding_length        = (int)buffer->data[buffer->cur];
+             
+            int len                         = (frame->length - playload->padding_length) -1 ; //data length
+            HTTP2_BUFFER *data              = NULL;
+            data                            = (HTTP2_BUFFER *)malloc( sizeof(HTTP2_BUFFER) +  len );
+            data->len                       = len;
+            
+            buffer->cur                     += 1 ; //skip padding length
+            memcpy(data->data, buffer->data + buffer->cur, len);
+            buffer->cur += len;
+            playload->data = (void*)data;
+            
+            if(frame->flags & 0x8){             //padding is set
+                if( playload->padding_length <= 0){
+                    sprintf(error, "The padding were set ,but the size of padding was less than zero.");
+                    return HTTP2_RETURN_PROTOCOL_ERROR;
+                }
+                HTTP2_BUFFER *padding       = NULL;
+                padding                     = (HTTP2_BUFFER*)malloc( sizeof(HTTP2_BUFFER) +  playload->padding_length);
+                padding->len                = playload->padding_length;
+                memcpy(padding->data, buffer->data + buffer->cur, playload->padding_length);
+                buffer->cur += playload->padding_length;
+                playload->padding = padding;
+  
+            }else{
+                if( playload->padding_length > 0){
+                    sprintf(error, "The padding weren't set ,but the size of padding was more than zero.");
+                    return HTTP2_RETURN_PROTOCOL_ERROR;
+                }
+
+            }
+            frame->playload = playload;
+        }
+        break;
+        case HTTP2_FRAME_HEADES:
+        {
+            HTTP2_PLOYLOAD_HEADERS *playload = malloc(sizeof(HTTP2_PLOYLOAD_HEADERS));
+            playload->padding_length        = 0;
+            playload->is_exclusive          = 0;
+            playload->stream_dependency     = 0;
+            playload->weigth                = 0;
+            playload->padding               = NULL;
+            playload->header_block_fragment = NULL;
+            frame->playload = playload;
+        }
+        break;
+        case HTTP2_FRAME_PRIORITY:    
+            sprintf(error, "HTTP2_RETURN_UNIMPLEMENTED\n");
+            return HTTP2_RETURN_UNIMPLEMENTED;
+        case HTTP2_FRAME_RST_STREAM:  
+            sprintf(error, "HTTP2_RETURN_UNIMPLEMENTED\n");
+            return HTTP2_RETURN_UNIMPLEMENTED;
+        case HTTP2_FRAME_SETTINGS:  
+        {
+            HTTP2_PLAYLOAD_SETTINGS *playload  = malloc(1 * sizeof(HTTP2_PLAYLOAD_SETTINGS));
+            playload->id                    = 0;
+            playload->value                 = 0;
+            frame->playload = playload;
+        }
+            break;
+        case HTTP2_FRAME_PUSH_PROMISE:
+            sprintf(error, "HTTP2_RETURN_UNIMPLEMENTED\n");
+            return HTTP2_RETURN_UNIMPLEMENTED;
+        case HTTP2_FRAME_PING:
+            sprintf(error, "HTTP2_RETURN_UNIMPLEMENTED\n");
+            return HTTP2_RETURN_UNIMPLEMENTED;
+        case HTTP2_FRAME_GOAWAY:
+            sprintf(error, "HTTP2_RETURN_UNIMPLEMENTED\n");
+            return HTTP2_RETURN_UNIMPLEMENTED;
+        case HTTP2_FRAME_WINDOW_UPDATE:
+        {
+            HTTP2_PLAYLOAD_WINDOW_UPDATE *playload = malloc(1 * sizeof(HTTP2_PLAYLOAD_WINDOW_UPDATE));
+            playload->reserved                  = 0;
+            playload->window_size_increment     = 0;
+            frame->playload = playload;
+        }
+        break;
+        case HTTP2_FRAME_CONTINUATION:
+            sprintf(error, "HTTP2_RETURN_UNIMPLEMENTED\n");
+            return HTTP2_RETURN_UNIMPLEMENTED;
+        default:
+            sprintf(error, "HTTP2_RETURN_INVALID_FRAME_TYPE\n");
+            return HTTP2_RETURN_INVALID_FRAME_TYPE;
+    }
+    return HTTP2_RETURN_NO_ERROR;
+}
+
+int HTTP2_frame_decode(HTTP2_BUFFER *buffer, HTTP2_FRAME_FORMAT **frame, char *error){
     unsigned int tmp_uint       = 0;
+    int r                       = 0;
     HTTP2_FRAME_FORMAT *nframe  = NULL;
-    HTTP2_BUFFER *buffer = *pbuffer;
     if( buffer == NULL ){
         if( error != NULL){sprintf(error, "The Buffer is empty.");}
         return HTTP2_RETURN_NULL_POINTER;
@@ -145,9 +240,12 @@ int HTTP2_frame_decode(HTTP2_BUFFER **pbuffer, HTTP2_FRAME_FORMAT **frame, char 
     buffer->cur += 4;
     tmp_uint = 0;
     
+
     if( nframe->length > 0 ){
-        if( buffer->len - buffer->cur > nframe->length ){
-            //TODO: decode playload
+        if( buffer->len - buffer->cur >= nframe->length ){
+            if( (r = HTTP2_playload_decode(buffer, nframe, error)) != HTTP2_RETURN_NO_ERROR ){
+                return r;
+            }
         }
         buffer->len = buffer->len - (MINIMUM_FRAME_SIZE + nframe->length);
         memmove(buffer->data, buffer->data+(MINIMUM_FRAME_SIZE + nframe->length), buffer->len);

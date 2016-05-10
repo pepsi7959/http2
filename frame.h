@@ -92,9 +92,9 @@ typedef struct HTTP2_PLAYLOAD_SETTINGS{
 
 typedef struct _buffer_t HTTP2_BUFFER;
 HTTP2_FRAME_FORMAT * HTTP2_frame_create();
-int HTTP2_frame_decode(HTTP2_BUFFER **pbuffer, HTTP2_FRAME_FORMAT **frame, char *error);
+int HTTP2_frame_decode(HTTP2_BUFFER *buffer, HTTP2_FRAME_FORMAT **frame, char *error);
 void * HTTP2_playload_create(int ftype);
+int HTTP2_playload_decode(HTTP2_BUFFER *buffer, HTTP2_FRAME_FORMAT *frame, char *error);
 int HTTP2_FRAME_add_playload(HTTP2_FRAME_FORMAT **frame, int type, void *playload, unsigned int streamID);
-
 
 #endif 
