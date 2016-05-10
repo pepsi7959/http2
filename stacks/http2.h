@@ -43,6 +43,14 @@ typedef struct _clnt_addr_t{
 
 typedef struct _buffer_t HTTP2_BUFFER;
 
+typedef struct _decoder_t{
+    
+}HTTP2_DECODER;
+
+typedef struct _encoder_t{
+    
+}HTTP2_ENCODER;
+
 typedef struct _connection_t{
     struct _connection_t    *next;
     struct _connection_t    *prev;
@@ -81,6 +89,7 @@ typedef struct _connection_t{
     
     int                     streamID;
     int                     state;
+    
 }HTTP2_CONNECTION;
 
 typedef struct _host_t{

@@ -95,11 +95,11 @@ int test_HTTP2_write(){
     ASSERT( HTTP2_read(hc, conn, error) == HTTP2_RET_READY );
     ASSERT( conn->state == HTTP2_CONNECTION_STATE_READY );
     
-    unsigned char setting_frame[]   = {0x00,0x00,0x00,0x04,0x00,0x00,0x00,0x00,0x00};
-    unsigned char setting_ack[]     = {0x00,0x00,0x00,0x04,0x01,0x00,0x00,0x00,0x00};
+    //unsigned char setting_frame[]   = {0x00,0x00,0x00,0x04,0x00,0x00,0x00,0x00,0x00};
+    //unsigned char setting_ack[]     = {0x00,0x00,0x00,0x04,0x01,0x00,0x00,0x00,0x00};
     
-    unsigned char window_frame[]    = {0x00,0x00,0x04,0x08,0x00,0x00,0x00,0x00,0x00,
-                                        0x00,0x0e,0xff,0x01};
+    //unsigned char window_frame[]    = {0x00,0x00,0x04,0x08,0x00,0x00,0x00,0x00,0x00,
+    //                                    0x00,0x0e,0xff,0x01};
     unsigned char header_frame[]    = {0x00,0x00,0x44,0x01,0x04,0x00,0x00,0x00,0x03,
                                         0x83,0x86,0x44,0x95,0x62,0x72,0xd1,0x41,0xfc,
                                         0x1e,0xca,0x24,0x5f,0x15,0x85,0x2a,0x4b,0x63,
@@ -260,10 +260,38 @@ int test_HTTP2_decode(){
     conn->w_buffer->len = (int)sizeof(data_frame);
     ASSERT( HTTP2_write(hc, conn , error) == HTTP2_RET_SENT );
     ASSERT( conn->w_buffer->len == 0);
+    HTTP2_close(hc, conn->no);
+    
+    if( (r = HTTP2_open(hc, &conn, error)) != HTTP2_RET_OK ){
+        DEBUG("test_HTTP2_open() return %d,0x[%s]\n", r, error);
+        return TEST_RESULT_FAILED;
+    }
+    
+    ASSERT(hc->connection_count == 1);
+    ASSERT(hc->wait_queue != NULL);
+    ASSERT(hc->list_addr == addr);
+    ASSERT(hc == conn->ref_group);
+    ASSERT(conn->w_buffer->size < HTTP2_MAX_BUFFER_SISE);
+    
+    ASSERT( HTTP2_write(hc, conn , error) == HTTP2_RET_OK );
+    ASSERT( conn->state == HTTP2_CONNECTION_STATE_CONNECTING );
+    sleep(1);
+    ASSERT( HTTP2_read(hc, conn, error) == HTTP2_RET_READY );
+    ASSERT( conn->state == HTTP2_CONNECTION_STATE_READY );
+    
+    memcpy(conn->w_buffer->data, header_frame, (int)sizeof(header_frame));
+    conn->w_buffer->len = (int)sizeof(header_frame);
+    ASSERT( HTTP2_write(hc, conn , error) == HTTP2_RET_SENT );
+    ASSERT( conn->w_buffer->len == 0);
+    
+    memcpy(conn->w_buffer->data, data_frame, (int)sizeof(data_frame));
+    conn->w_buffer->len = (int)sizeof(data_frame2);
+    ASSERT( HTTP2_write(hc, conn , error) == HTTP2_RET_SENT );
+    ASSERT( conn->w_buffer->len == 0);
     
     unsigned int nextID             = 1;
     int i                           = 0;
-    unsigned char setting_frame[]   = {0x00,0x00,0x00,0x04,0x00,0x00,0x00,0x00,0x00};
+    //unsigned char setting_frame[]   = {0x00,0x00,0x00,0x04,0x00,0x00,0x00,0x00,0x00};
     
     for( ; i < 64; i++){
         HTTP2_read(hc, conn, error);
@@ -281,7 +309,6 @@ int test_HTTP2_decode(){
         memcpy(conn->w_buffer->data+conn->w_buffer->len, data_frame2, (int)sizeof(data_frame2));
         conn->w_buffer->len += (int)sizeof(data_frame2);
         HTTP2_write(hc, conn , error);
-
         sleep(1);
     }
     
@@ -291,9 +318,7 @@ int test_HTTP2_decode(){
 
 void test_all(){
 	//UNIT_TEST(test_HTTP2_open());
-    //WAIT();
     //UNIT_TEST(test_HTTP2_write());
-    //WAIT();
     UNIT_TEST(test_HTTP2_decode());
     WAIT();
 }

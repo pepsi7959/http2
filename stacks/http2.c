@@ -156,7 +156,7 @@ static int HTTP2_connect_setup_res(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, char 
     if( ( r = HTTP2_read_direct(hc, conn, error)) != HTTP2_RET_OK ){
         return r; 
     }
-    r = HTTP2_frame_decode(&(conn->r_buffer), &frame, error);
+    r = HTTP2_frame_decode(conn->r_buffer, &frame, error);
     if( r != HTTP2_RETURN_NO_ERROR ){
         return HTTP2_RET_ERR_DECODE;
     }
@@ -551,7 +551,7 @@ int HTTP2_decode(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, char *error){
         return HTTP2_RET_OK;
     }
 
-    ret = HTTP2_frame_decode(&(conn->r_buffer), &frame, error);
+    ret = HTTP2_frame_decode(conn->r_buffer, &frame, error);
 
     if( ret == HTTP2_RETURN_NEED_MORE_DATA){
         return HTTP2_RET_NEED_MORE_DATA;
@@ -563,6 +563,7 @@ int HTTP2_decode(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, char *error){
     switch( frame->type ){
         case HTTP2_FRAME_DATA:
             printf("Obtained HTTP2_FRAME_DATA Frame\n");
+            ret = HTTP2_RET_OK;
             break;
         case HTTP2_FRAME_HEADES:
             printf("Obtained HTTP2_FRAME_HEADES Frame\n");
