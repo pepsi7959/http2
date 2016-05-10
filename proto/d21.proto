@@ -1,0 +1,93 @@
+// Since we're gonna suport gRPC, protoc3 is recommended rather than protoc2.
+
+syntax = "proto3";
+
+package pb;
+
+/*import "github.com/gogo/protobuf/gogoproto/gogo.proto";*/
+
+//option (gogoproto.marshaler_all)       = true;
+/* option (gogoproto.sizer_all)           = true; */
+//option (gogoproto.unmarshaler_all)     = true;
+/* option (gogoproto.goproto_getters_all) = false; */
+
+// The Add service definition.
+//service D21 {
+  // Do processes the message
+  //rpc Do (Request) returns (Response);
+  //rpc ResolveAlias (Request) returns (Response);
+//}
+
+// LDAP Search scope
+enum SearchScope {
+    BaseObject  = 0;
+    SingleLevel = 1;
+    Subtree     = 2;
+}
+
+enum RESTMethod {
+    UNKNOWN = 0;
+    GET     = 1;
+    PUT     = 2;
+    POST    = 3;
+    DELETE  = 4;
+    SYNC    = 5;
+}
+
+enum EntryMethod {
+    Search  = 0;
+    Add     = 1;
+    Replace = 2;
+    Delete  = 3;
+}
+
+// Request
+message Request {
+    /* option (gogoproto.goproto_getters) = true; */
+    /* option (gogoproto.face)            = false; */
+    uint64 ID                          = 1;
+    int64 Time                         = 2;
+    RESTMethod Method                  = 3;
+    string BaseDn                      = 4;
+    string Filter                      = 5; // GET, SEARCH
+    repeated string Attributes         = 6; // GET, SEARCH
+    SearchScope Scope                  = 7;
+    Entry Entry                        = 8; // PUT, MOD
+    string Dn                          = 9;
+    bool Recursive                     = 10;
+}
+
+// Entry represents on single Dn in LDAP
+message Entry {
+    /* option (gogoproto.goproto_getters) = true; */
+    /* option (gogoproto.face)            = false; */
+    EntryMethod method                 = 1;
+    string Dn                          = 2;
+    repeated EntryAttribute Attributes = 3;
+}
+
+// Key value pair
+message EntryAttribute {
+    /* option (gogoproto.goproto_getters) = true; */
+    /* option (gogoproto.face)            = false; */
+    string Name            = 1;
+    repeated string Values = 2;
+}
+
+// Response
+message Response {
+    /* option (gogoproto.goproto_getters) = true; */
+    /* option (gogoproto.face)            = false; */
+    uint64 ID                          = 1;
+    uint32 ResultCode                  = 2;
+    string MatchedDn                   = 3;
+    string ResultDescription           = 4;
+    repeated Entry Entries             = 5;
+    repeated string Referrals          = 6;
+}
+
+// Meta data is used to return meta data to response
+message Metadata {
+    uint64 NodeID    = 1;
+    uint64 ClusterID = 2;
+}
