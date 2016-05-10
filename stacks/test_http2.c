@@ -317,8 +317,8 @@ int test_HTTP2_decode(){
 }
 
 void test_all(){
-	//UNIT_TEST(test_HTTP2_open());
-    //UNIT_TEST(test_HTTP2_write());
+	UNIT_TEST(test_HTTP2_open());
+    UNIT_TEST(test_HTTP2_write());
     UNIT_TEST(test_HTTP2_decode());
     WAIT();
 }
