@@ -1,8 +1,10 @@
 #ifndef __HPACK_H
 #define __HPACK_H
 
-#define MAX_HEADER_NAME_SIZE						1024
-#define MAX_HEADER_VALUE_SIZE						1024
+#include "common.h"
+
+#define MAX_HEADER_FIELD_NAME_SIZE						1024
+#define MAX_HEADER_FIELD_VALUE_SIZE						1024
 #define MAX_TABLE_SIZE								1024	
 #define MAX_DYNAMIC_TABLE_SIZE						MAX_TABLE_SIZE
 #define INDEX_HEADER_FIELD							0x80
@@ -84,6 +86,7 @@ enum HM_RETURN_CODE{
 	HM_RETURN_NOT_FOUND_NAME        = -2,
 	HM_RETURN_EXIST_NAME	        = -3,
 	HM_RETURN_EXCEED_SIZE	        = -4,
+    HM_RETURN_NULL_POINTER          = -5,
 	HM_RETURN_UNIMPLEMENT	        = -100,
 
 	HM_RETURN_UNKOWN_HEADER_FIELD   = -200,
@@ -92,24 +95,33 @@ enum HM_RETURN_CODE{
 struct header_field{
     struct header_field *next;
     struct header_field *prev;
+    int sensitive;
     int index;
-	char name[MAX_HEADER_NAME_SIZE];
-	char value[MAX_HEADER_VALUE_SIZE];
+	char name[MAX_HEADER_FIELD_NAME_SIZE];
+	char value[MAX_HEADER_FIELD_VALUE_SIZE];
 };
 
 typedef struct header_field HEADER_FIELD;
+
+struct _dynamic_table_t{
+    HEADER_FIELD *header_fields;
+    int size;
+    int max_size;
+};
+
+typedef struct _dynamic_table_t DYNAMIC_TABLE;
 
 static HEADER_FIELD dynamic_table[MAX_DYNAMIC_TABLE_SIZE];
 static int dynamic_table_length;
 extern HEADER_FIELD static_table[];
 
 int dynamic_table_init(int size);
-int dynamic_table_add(char *name, char *value);
+int dynamic_table_add(DYNAMIC_TABLE *dynamic, char *name, char *value, char *error);
 int dynamic_table_replace(char *name, char *value);
 int dynamic_table_delete(char *name);
-int dynamic_table_search(char *name, char *value);
+int dynamic_table_search(DYNAMIC_TABLE *dynamic_table ,char *name, char *value, int sensitive, int *isMatch, char *error);
 int header_static_append(HEADER_FIELD *header, int index, char *value);
 int header_dynamic_append(HEADER_FIELD *header, char *name, char *value);
 int header_encode(HEADER_FIELD *header, char **enc_buff);
-int header_dncode(unsigned *enc_buff, HEADER_FIELD **header);
+int header_decode(unsigned *enc_buff, HEADER_FIELD **header);
 #endif

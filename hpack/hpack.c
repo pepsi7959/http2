@@ -20,7 +20,7 @@
 #define STRCPY(s1,s2)       strcpy(s1,s2)
 #define STRLEN(s1)          (s1 == NULL)?0:strlen(s1)
 #define STRRESET(s1)        (s1[0] = 0)
-#define pair(n,v)           {NULL,NULL,0,n,v}
+#define pair(n,v)           {NULL,NULL,0,0,n,v}
 #define LIST_APPEND(_first,_item)                           \
 {                                                           \
    if ((_first) == NULL)                                    \
@@ -56,6 +56,7 @@
    (_item)->prev = (_item)->next = NULL;                    \
 }
 
+static int STATIC_TABLE_SIZE = 61;
 HEADER_FIELD STATIC_TABLE[] = {
 	pair(":authority", ""), // index 1 (1-based)
 	pair(":method", "GET"),
@@ -121,17 +122,29 @@ HEADER_FIELD STATIC_TABLE[] = {
 	
 };
 
-int dynamic_table_add(char *name, char *value){
-	int i = 0;
-	for(i = 0 ; i < dynamic_table_length;i++){
-		if( STRCMP(name, dynamic_table[i].name) ){
-			return HM_RETURN_EXIST_NAME;
-		}
-	}
-	dynamic_table_length++;
-	STRCPY(dynamic_table[i].name, name);
-	STRCPY(dynamic_table[i].value, value);
-	
+int dynamic_table_add(DYNAMIC_TABLE *dynamic, char *name, char *value, char *error){
+    if( dynamic == NULL ){
+        if( error != NULL) sprintf(error, "DYNAMIC_TABLE* was NULL");
+        return HM_RETURN_NULL_POINTER;
+    }
+    HEADER_FIELD *nhf   = (HEADER_FIELD*)malloc(sizeof(HEADER_FIELD));
+    nhf->next           = NULL;
+    nhf->prev           = NULL;
+    
+    if( strlen(name) > MAX_HEADER_FIELD_NAME_SIZE ){
+        if( error != NULL) sprintf(error, "size of header name is too bigger");
+        return HM_RETURN_EXCEED_SIZE;
+    }
+    STRCPY(nhf->name, name);
+    
+    if( strlen(value) > MAX_HEADER_FIELD_VALUE_SIZE ){
+        if( error != NULL) sprintf(error, "size of header value is too bigger");
+        return HM_RETURN_EXCEED_SIZE;
+    }
+    STRCPY(nhf->value, value);
+    LIST_APPEND(dynamic->header_fields, nhf);
+    dynamic->size++;
+    
 	return HM_RETURN_SUCCESS;
 }
 
@@ -163,16 +176,58 @@ int dynamic_table_delete(char *name){
 	return HM_RETURN_NOT_FOUND_NAME;
 }
 
-int dynamic_table_search(char *name, char *value){
-	int i = 0;
-	for(i = 0; i < dynamic_table_length;i++){
-		if( STRCMP(name, dynamic_table[i].name) ){
-			STRCPY(value, dynamic_table[i].value);
-			return HM_RETURN_SUCCESS;
-		}
-	}
+int dynamic_table_search(DYNAMIC_TABLE *dynamic, char *name, char *value, int sensitive, int *isMatch, char *error){
+    if( dynamic == NULL ){
+        if( error != NULL) sprintf(error, "DYNAMIC_TABLE* was NULL");
+        return HM_RETURN_NULL_POINTER;
+    }
+    int idx         = 0;
+    int idy         = 1;
+    int is_match    = 0; 
+    int i           = 0;
+    
+    for( ; i < STATIC_TABLE_SIZE; i++){
+        if( !STRCMP(STATIC_TABLE[i].name, name) ){
+            continue;
+        }
+        
+        if(idx == 0){
+            idx = i+1;
+        }
+               
+        if( sensitive == 1){
+            continue;
+        }
+        
+        if( !STRCMP(STATIC_TABLE[i].value, value) ){
+            continue;
+        }
+        
+        idx = i+1;
+        (*isMatch) = is_match;
+        return idx;
+    }
+    
+
+    HEADER_FIELD *tmp_hf = dynamic->header_fields->prev;
+    while( tmp_hf ){
+        if( STRCMP(tmp_hf->name, name) && STRCMP(tmp_hf->value, value) ){
+            is_match = 1;
+            break;
+        }
+        idy++;
+        tmp_hf = tmp_hf->prev;
+        if( tmp_hf == dynamic->header_fields->prev){
+            break;
+        }
+    }
 	
-	return HM_RETURN_NOT_FOUND_NAME;
+    if( is_match == 1 || (idx == 0 && idy != 0)){
+        (*isMatch) = is_match;
+        return idy + STATIC_TABLE_SIZE;
+    }
+    
+	return idx;
 }
 
 static HEADER_FIELD * header_allocate(){
