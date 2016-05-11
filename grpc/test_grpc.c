@@ -50,7 +50,7 @@ int test_Pb__Request(){
     
     sprintf(req->basedn, "dc=C-NTDB");
     sprintf(req->filter, "objectclass=*");
-    sprintf(req->dn, "uid=000000000000001,ds=subscriber,o=ais,dc=C-NTDB");
+    sprintf(req->dn, "uid=000000000000935,ds=SUBSCRIBER,o=AIS,dc=C-NTDB");
     
     req->has_scope          = 1;
     req->scope              = PB__SEARCH_SCOPE__BaseObject;
@@ -65,7 +65,7 @@ int test_Pb__Request(){
     entry->method           = PB__ENTRY_METHOD__Add;
     entry->dn               = NULL;
     entry->dn               = malloc(sizeof(char)*1025);
-    sprintf(entry->dn, "uid=000000000000001,ds=subscriber,o=ais,dc=C-NTDB");
+    sprintf(entry->dn, "uid=000000000000935,ds=SUBSCRIBER,o=AIS,dc=C-NTDB");
     entry->n_attributes     = 0;
     entry->attributes       = NULL;
     
@@ -100,18 +100,19 @@ int test_Pb__Request(){
     
     ASSERT(decode_req != NULL);
     ASSERT(decode_req->id == 10);
-    ASSERT(req->scope == PB__SEARCH_SCOPE__BaseObject);
-    ASSERT(strcmp(req->basedn, "dc=C-NTDB") == 0);
-    ASSERT(strcmp(req->filter, "objectclass=*") == 0);
-    ASSERT(strcmp(req->dn, "uid=000000000000001,ds=subscriber,o=ais,dc=C-NTDB") == 0);
-    ASSERT(req->recursive == 1);
-    ASSERT(req->entry != NULL);
-    ASSERT(req->entry->n_attributes == 1);
-    ASSERT(req->entry->attributes != NULL);
-    ASSERT( strcmp(req->entry->attributes[0]->name, "attr")== 0);
-    ASSERT( req->entry->attributes[0]->n_values == 2);
-    ASSERT( strcmp(req->entry->attributes[0]->values[0], "values1")== 0);
-    ASSERT( strcmp(req->entry->attributes[0]->values[1], "values2")== 0);
+    ASSERT(decode_req->scope == PB__SEARCH_SCOPE__BaseObject);
+    ASSERT(strcmp(decode_req->basedn, "dc=C-NTDB") == 0);
+    ASSERT(strcmp(decode_req->filter, "objectclass=*") == 0);
+    printf("dn : %s", decode_req->dn);
+    ASSERT(strcmp(decode_req->dn, "uid=000000000000935,ds=SUBSCRIBER,o=AIS,dc=C-NTDB") == 0);
+    ASSERT(decode_req->recursive == 1);
+    ASSERT(decode_req->entry != NULL);
+    ASSERT(decode_req->entry->n_attributes == 1);
+    ASSERT(decode_req->entry->attributes != NULL);
+    ASSERT( strcmp(decode_req->entry->attributes[0]->name, "attr")== 0);
+    ASSERT( decode_req->entry->attributes[0]->n_values == 2);
+    ASSERT( strcmp(decode_req->entry->attributes[0]->values[0], "values1")== 0);
+    ASSERT( strcmp(decode_req->entry->attributes[0]->values[1], "values2")== 0);
     
     return TEST_RESULT_SUCCESSED;        
 }
@@ -179,10 +180,38 @@ int test_Pb__Response(){
     return TEST_RESULT_SUCCESSED;
 }
 
+int test_Decode_from_data(){
+    Pb__Request *decode_req = NULL;
+    int len                 = 84;
+    unsigned char buf[]     = { 0x08,0xaf,0xce,0xe8,0x98,0xde,0x93,0x95,
+                                0xf0,0xc5,0x01,0x18,0x01,0x22,0x31,0x75,
+                                0x69,0x64,0x3d,0x30,0x30,0x30,0x30,0x30,
+                                0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x39,
+                                0x33,0x35,0x2c,0x64,0x73,0x3d,0x53,0x55,
+                                0x42,0x53,0x43,0x52,0x49,0x42,0x45,0x52,
+                                0x2c,0x6f,0x3d,0x41,0x49,0x53,0x2c,0x64,
+                                0x63,0x3d,0x43,0x2d,0x4e,0x54,0x44,0x42,
+                                0x2a,0x0f,0x28,0x6f,0x62,0x6a,0x65,0x63,
+                                0x74,0x43,0x6c,0x61,0x73,0x73,0x3d,0x2a,
+                                0x29,0x32,0x01,0x2a};
+    decode_req  = pb__request__unpack(NULL, len, (void*)&buf);
+    
+    ASSERT(decode_req != NULL);
+    ASSERT(decode_req->id == 14258489457351730991lu);
+    ASSERT(decode_req->scope == PB__SEARCH_SCOPE__BaseObject);
+    ASSERT(strcmp(decode_req->basedn, "uid=000000000000935,ds=SUBSCRIBER,o=AIS,dc=C-NTDB") == 0);
+    ASSERT(strcmp(decode_req->filter, "(objectClass=*)") == 0);
+    ASSERT(decode_req->dn == NULL);
+    ASSERT(decode_req->recursive == 0);
+    ASSERT(decode_req->entry == NULL);
+    ASSERT(decode_req->entry->n_attributes == 0);
+    return TEST_RESULT_SUCCESSED;
+}
 void test_all(){
     UNIT_TEST(test_helloworld());
     UNIT_TEST(test_Pb__Request());
-    UNIT_TEST(test_Pb__Response());
+    UNIT_TEST(test_Decode_from_data());
+    UNIT_TEST(test_Pb__Response());   
 }
 
 int main(){
