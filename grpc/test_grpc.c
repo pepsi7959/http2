@@ -5,6 +5,7 @@
 #include "testcase.h"
 #include "helloworld.pb-c.h"
 #include "d21.pb-c.h"
+#include "grpc.h"
 
 void HEXDUMP(unsigned char *buff, int size){
 	static char hex[] = {'0','1','2','3','4','5','6','7',
@@ -130,32 +131,34 @@ int test_Pb__Response(){
     res->has_resultcode     = 1;
     res->resultcode         = 0;
     res->matcheddn          = calloc(1, sizeof(char)*128);
-    sprintf(res->matcheddn, "dc=C-NTDB");
     res->resultdescription  = NULL;
     res->n_referrals        = 0;
     res->referrals          = NULL;
-    res->n_entries          = 1;
+    res->n_entries          = 0;
+    sprintf(res->matcheddn, "dc=C-NTDB");
     
-    Pb__EntryAttribute *entry[1];
+    Pb__EntryAttribute *attr_entry[1];
     Pb__Entry          *en[1];
     char *values[2];
-    entry[0]                = malloc(sizeof(Pb__Entry));
-    entry[0]->name          = malloc(sizeof(char)*128);
+    
+    attr_entry[0]                = malloc(sizeof(Pb__Entry));
+    attr_entry[0]->name          = malloc(sizeof(char)*128);
 
 
-    entry[0]->n_values      = 2;
+    attr_entry[0]->n_values      = 2;
     values[0]               = malloc(sizeof(char)*128);
     values[1]               = malloc(sizeof(char)*128);
     
-    sprintf(entry[0]->name, "attribute");
+    sprintf(attr_entry[0]->name, "attribute");
     sprintf(values[0], "values1");
     sprintf(values[1], "values2");
-    entry[0]->values        = values;
+    attr_entry[0]->values        = values;
     
     en[0]->n_attributes     = 1;    
-    en[0]->attributes       = entry;
+    en[0]->attributes       = attr_entry;
     
-    res->entries            = en;
+    res->entries            = NULL;
+    //res->entries            = en;
     
     len = pb__response__get_packed_size(res);
     buf = malloc(len);
@@ -182,8 +185,8 @@ int test_Pb__Response(){
 
 int test_Decode_from_data(){
     Pb__Request *decode_req = NULL;
-    int len                 = 84;
-    unsigned char buf[]     = { 0x08,0xaf,0xce,0xe8,0x98,0xde,0x93,0x95,
+    int len                    = 84;
+/*     unsigned char buf[]     = { 0x08,0xaf,0xce,0xe8,0x98,0xde,0x93,0x95,
                                 0xf0,0xc5,0x01,0x18,0x01,0x22,0x31,0x75,
                                 0x69,0x64,0x3d,0x30,0x30,0x30,0x30,0x30,
                                 0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x39,
@@ -193,24 +196,69 @@ int test_Decode_from_data(){
                                 0x63,0x3d,0x43,0x2d,0x4e,0x54,0x44,0x42,
                                 0x2a,0x0f,0x28,0x6f,0x62,0x6a,0x65,0x63,
                                 0x74,0x43,0x6c,0x61,0x73,0x73,0x3d,0x2a,
-                                0x29,0x32,0x01,0x2a};
+                                0x29,0x32,0x01,0x2a}; */
+                                
+        unsigned char buf[] ={  0x08,0x82,
+                                0x8a,0xcc,0xfa,0xbc,0x94,0x95,0xf0,0xc5,
+                                0x01,0x18,0x01,0x22,0x31,0x75,0x69,0x64,
+                                0x3d,0x30,0x30,0x30,0x30,0x30,0x30,0x30,
+                                0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,
+                                0x2c,0x64,0x73,0x3d,0x53,0x55,0x42,0x53,
+                                0x43,0x52,0x49,0x42,0x45,0x52,0x2c,0x6f,
+                                0x3d,0x41,0x49,0x53,0x2c,0x64,0x63,0x3d,
+                                0x43,0x2d,0x4e,0x54,0x44,0x42,0x2a,0x0f,
+                                0x28,0x6f,0x62,0x6a,0x65,0x63,0x74,0x43,
+                                0x6c,0x61,0x73,0x73,0x3d,0x2a,0x29,0x32,
+                                0x01,0x2a};
+
     decode_req  = pb__request__unpack(NULL, len, (void*)&buf);
     
     ASSERT(decode_req != NULL);
-    ASSERT(decode_req->id == 14258489457351730991lu);
+    DEBUG("Expect Value : %lu", decode_req->id );
+    ASSERT(decode_req->has_id == 1);
+    ASSERT(decode_req->id == 14258489482789717250llu);
     ASSERT(decode_req->scope == PB__SEARCH_SCOPE__BaseObject);
-    ASSERT(strcmp(decode_req->basedn, "uid=000000000000935,ds=SUBSCRIBER,o=AIS,dc=C-NTDB") == 0);
+    DEBUG("Expect Value : %d", decode_req->scope );
+    ASSERT(strcmp(decode_req->basedn, "uid=000000000000000,ds=SUBSCRIBER,o=AIS,dc=C-NTDB") == 0);
     ASSERT(strcmp(decode_req->filter, "(objectClass=*)") == 0);
     ASSERT(decode_req->dn == NULL);
     ASSERT(decode_req->recursive == 0);
     ASSERT(decode_req->entry == NULL);
-    ASSERT(decode_req->entry->n_attributes == 0);
+    
     return TEST_RESULT_SUCCESSED;
 }
+
+int test_GRPC_gen_search_request(){
+    char error[1024];
+    Pb__Request *decode_req = NULL;
+    GRPC_BUFFER *buffer     = malloc(sizeof(GRPC_BUFFER)*2048);
+    buffer->len             = 0;
+    buffer->size            = 2048;
+    buffer->data[0]         = 0;
+    error[0]                = 0;
+    
+    ASSERT( GRPC_gen_search_request(&buffer, "uid=000000000000000,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK );
+    ASSERT( buffer->len >= 0);
+
+    decode_req  = pb__request__unpack(NULL, buffer->len, (void*)buffer->data);
+    ASSERT(decode_req != NULL);
+    ASSERT(decode_req->id == 10);
+    ASSERT(decode_req->scope == PB__SEARCH_SCOPE__BaseObject);
+    //ASSERT(strcmp(decode_req->basedn, "dc=C-NTDB") == 0);
+    ASSERT(strcmp(decode_req->dn, "uid=000000000000000,ds=SUBSCRIBER,o=AIS,dc=C-NTDB") == 0);
+    ASSERT(strcmp(decode_req->filter, "(objectClass=*)") == 0);
+    ASSERT(decode_req->recursive == 1);
+    ASSERT(decode_req->entry == NULL);
+    pb__request__free_unpacked(decode_req, NULL);
+    
+    return TEST_RESULT_SUCCESSED;
+}
+
 void test_all(){
     UNIT_TEST(test_helloworld());
     UNIT_TEST(test_Pb__Request());
     UNIT_TEST(test_Decode_from_data());
+    UNIT_TEST(test_GRPC_gen_search_request());
     UNIT_TEST(test_Pb__Response());   
 }
 
