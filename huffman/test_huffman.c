@@ -1,17 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "tables.h"
+#include "testcase.h"
 #include "huffman.h"
 
 static int testhf_byte_encode_3bytes(){
 	char b[10];
 	b[0] = 0;
 	b[1] = 0;
-	int r = hf_byte_encode('a', 8, &b[0]);
-	r = hf_byte_encode('p', r, &b[0]);
-	r = hf_byte_encode('p', r, &b[1]);
+	int r = hf_byte_encode('a', 8, (unsigned char*)&b[0]);
+	r = hf_byte_encode('p', r, (unsigned char*)&b[0]);
+	r = hf_byte_encode('p', r, (unsigned char*)&b[1]);
 	if( r ==7 && b[0] == 0x1d && b[1] == 0x75) return 1;
 	printf("expected 7:%d , %d:%d, %d:%d\n", r,0x1d,b[0], 0x75, b[1]);
 	return 0;
@@ -20,8 +19,8 @@ static int testhf_byte_encode_3bytes(){
 static int testhf_byte_encode_2bytes(){
 	char b[10];
 	b[0] = 0;
-	int r = hf_byte_encode('a', 8, &b[0]);
-	r = hf_byte_encode('p', r, &b[0]);
+	int r = hf_byte_encode('a', 8, (unsigned char*)&b[0]);
+	r = hf_byte_encode('p', r, (unsigned char*)&b[0]);
 	if( r ==5 && b[0] == 0x1d) return 1;
 	printf("expected 3:%d , %d:%d\n", r,0x18,b[0]);
 	return 0;
@@ -30,7 +29,7 @@ static int testhf_byte_encode_2bytes(){
 static int testhf_byte_encode_1byte(){
 	char b[10];
 	b[0] = 0;
-	int r = hf_byte_encode('a', 8, b);
+	int r = hf_byte_encode('a', 8, (unsigned char*)b);
 	if( r ==3 && b[0] == 0x18) return 1;
 	printf("expected 3:%d , %d:%d\n", r,0x18,b[0]);
 	return 0;
@@ -128,11 +127,24 @@ int test_hf_string_decode(char *bin){
 	if( strncmp(out_buff, bin, size) == 0){
         return 1;
 	}else{
-		hf_print_hex(out_buff, size);
+		hf_print_hex((unsigned char*)out_buff, size);
         return 0;
 	}
 
 }
+
+int test_hf_string_decode_6bytes(){
+    hf_init();
+    char out_buff[128];
+    unsigned char bin[] = {0x9a,0xca,0xc8,0xb2,0x4d,0x49,0x4f,0x6a,0x7f};
+    
+    int size = hf_string_decode(bin, sizeof(bin), out_buff, 128);
+    out_buff[size] = 0;
+    printf("6bytes : (%d)%s\n",size, out_buff);
+    hf_print_hex((unsigned char*)out_buff, size);
+    return TEST_RESULT_SUCCESSED;
+}
+
 
 void test_all(){
 	printf("testhf_byte_encode_1byte():%s\n",
@@ -146,10 +158,10 @@ void test_all(){
     printf("test_hf_integer_encode():%s\n",
 			test_hf_integer_encode_b()?"\033[1;37\033[1;42mPASS\033[0m":"\033[1;31mFAILED\033[0m");
     printf("test_hf_string_encode():%s\n",
-			test_hf_string_encode("application/grpc")?"\033[1;37\033[1;42mPASS\033[0m":"\033[1;31mFAILED\033[0m");
+			test_hf_string_encode("/pb.D21/Do")?"\033[1;37\033[1;42mPASS\033[0m":"\033[1;31mFAILED\033[0m");
     printf("test_hf_string_encode():%s\n",
             test_hf_string_decode("application/grpc")?"\033[1;37\033[1;42mPASS\033[0m":"\033[1;31mFAILED\033[0m");
-
+    UNIT_TEST(test_hf_string_decode_6bytes());
 }
 
 int main(){

@@ -27,7 +27,6 @@ static int _hf_add_node(unsigned char sym, int code, int code_len){
 	for( ; code_len > 8 ; ){
 		code_len -= 8;
 		i = (unsigned char)(code >> code_len);
-		NODE *ncur = NULL;
 		if(cur->children[i] == NULL ){
 			cur->children[i] = node_create();
 		}
@@ -91,10 +90,10 @@ int hf_string_encode(char *buff_in, int size, int prefix, unsigned char *buff_ou
 
 	for(i = 0; i < size; i++){
 		
-		if( remain > HEX_TO_HF_CODE_LEN(buff_in[i]) ){
-			nbytes = (remain - HEX_TO_HF_CODE_LEN(buff_in[i])) / 8;
+		if( remain > HEX_TO_HF_CODE_LEN((int)buff_in[i]) ){
+			nbytes = (remain - HEX_TO_HF_CODE_LEN((int)buff_in[i])) / 8;
 		}else{
-			nbytes = ((HEX_TO_HF_CODE_LEN(buff_in[i]) - remain) / 8)+1;
+			nbytes = ((HEX_TO_HF_CODE_LEN((int)buff_in[i]) - remain) / 8)+1;
 		}
 		remain = hf_byte_encode( buff_in[i], remain, &buff_out[j]);
 		j += nbytes;
@@ -103,8 +102,8 @@ int hf_string_encode(char *buff_in, int size, int prefix, unsigned char *buff_ou
 	// Special EOS sybol
 	if( remain < 8 ){
 		unsigned int codes = 0x3fffffff;
-		int nbits = 30;
-		buff_out[j] |= (unsigned char )(codes >> (nbits-remain));
+		int nbits = (char)30;
+		buff_out[j++] |= (unsigned char )(codes >> (nbits-remain));
 	}
 
 	*size_out = j;
@@ -114,13 +113,11 @@ int hf_string_encode(char *buff_in, int size, int prefix, unsigned char *buff_ou
 int hf_string_decode(unsigned char *enc, int enc_sz, char *out_buff, int out_sz){
 	NODE *n			  = ROOT;
 	unsigned int cur  = 0;
-	unsigned char b	  = 0;
 	int	nbits		  = 0;
 	int i			  = 0;	
 	int idx			  = 0;
 	int at			  = 0;
-	for(i=0;i < enc_sz;i++){
-		printf("decodeing : %d\n", enc[i]);
+	for(i=0; i < enc_sz ; i++){
 		cur = (cur<<8)|enc[i];
 		nbits += 8;
 		for( ;nbits >= 8; ){
@@ -148,9 +145,10 @@ int hf_string_decode(unsigned char *enc, int enc_sz, char *out_buff, int out_sz)
 
 	for( ;nbits > 0; ){
 		n = n->children[ (unsigned char)( cur<<(8-nbits) ) ];
-		if( n->children != NULL || n->code_len  > nbits){
+		if( n->size != 0 || n->code_len  > nbits){
 			break;
 		}
+
 		out_buff[at++] = (char) n->sym;
 		nbits -= n->code_len;
 		n = ROOT;
@@ -165,14 +163,10 @@ int hf_integer_encode(unsigned int enc_binary, int nprefix, unsigned char *buff)
 	unsigned int ch2    = 0;
 	unsigned int prefix = (1 << nprefix) - 1;
 
-	printf("ch : %u\n", ch);
-	
-	if( ch < prefix  && (ch < 0xff) ){
+    if( ch < prefix  && (ch < 0xff) ){
 		buff[i++] = ch & prefix;
-		printf("encoded	as: %u\n", prefix );
 	}else{
 		buff[i++] = prefix;
-		printf("encoded	as: %u\n", prefix );
 		ch -= prefix;
 		while(ch > 128)
 		{
@@ -183,7 +177,7 @@ int hf_integer_encode(unsigned int enc_binary, int nprefix, unsigned char *buff)
 		}
 		buff[i++] = ch;
 	}
-	return HM_RETURN_SUCCESS;
+	return i;
 }
 
 int hf_integer_decode(char *enc_buff, int nprefix , char *dec_buff){
@@ -193,8 +187,6 @@ int hf_integer_decode(char *enc_buff, int nprefix , char *dec_buff){
 	unsigned int B		= 0;
 	unsigned int ch	    = enc_buff[i++];
 	unsigned int prefix = (1 << nprefix) - 1;
-
-	printf("ch : %u\n", ch);
 
 	if( ch < prefix ){
 		dec_buff[j++] = ch;
@@ -206,12 +198,21 @@ int hf_integer_decode(char *enc_buff, int nprefix , char *dec_buff){
 			M = M + 7;
 		}
 		while(B & 128);
-		printf("decode ch : %u\n", ch);
 		dec_buff[j] = ch;
 	}
 	return HM_RETURN_SUCCESS;
 }
 
+int hf_string_encode_len(unsigned char *enc, int enc_sz){
+    int i       = 0;
+    int len     = 0;
+    for(i = 0; i < enc_sz; i++){
+        len += huffman_code_len[(int)enc[i]];
+    }
+    
+    return (len+7)/8;
+}
+    
 void hf_print_hex(unsigned char *buff, int size){
 	static char hex[] = {'0','1','2','3','4','5','6','7',
 								'8','9','a','b','c','d','e','f'};

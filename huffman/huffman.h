@@ -24,5 +24,6 @@ int hf_integer_decode(char *enc_buff, int nprefix , char *dec_buff);
 int hf_string_encode(char *buff_in, int size, int prefix, unsigned char *buff_out, int *size_out);
 int hf_string_decode(unsigned char *enc, int enc_sz, char *out_buff, int out_sz);
 void hf_print_hex(unsigned char *buff, int size);
+int hf_string_encode_len(unsigned char *enc, int enc_sz);
 
 #endif
