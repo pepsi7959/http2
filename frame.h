@@ -57,6 +57,7 @@ typedef struct HTTP2_FRAME_FORMAT{
     int reserved;                    //1 bits
     unsigned int streamID;          //31 bits
     void * playload;
+
 }HTTP2_FRAME_FORMAT;
 
 typedef struct HTTP2_PLAYLOAD_DATA{
