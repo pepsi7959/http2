@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "hpack.h"
-
+#include "huffman.h"
 
 #define MAX_HEADER_NAME_SIZE						1024
 #define MAX_HEADER_VALUE_SIZE						1024
@@ -56,7 +56,10 @@
    (_item)->prev = (_item)->next = NULL;                    \
 }
 
+static HEADER_FIELD dynamic_table[MAX_DYNAMIC_TABLE_SIZE];
+static int dynamic_table_length;
 static int STATIC_TABLE_SIZE = 61;
+
 HEADER_FIELD STATIC_TABLE[] = {
 	pair(":authority", ""), // index 1 (1-based)
 	pair(":method", "GET"),
@@ -125,7 +128,7 @@ HEADER_FIELD STATIC_TABLE[] = {
 int dynamic_table_add(DYNAMIC_TABLE *dynamic, char *name, char *value, char *error){
     if( dynamic == NULL ){
         if( error != NULL) sprintf(error, "DYNAMIC_TABLE* was NULL");
-        return HM_RETURN_NULL_POINTER;
+        return HPACK_RETURN_NULL_POINTER;
     }
     HEADER_FIELD *nhf   = (HEADER_FIELD*)malloc(sizeof(HEADER_FIELD));
     nhf->next           = NULL;
@@ -133,34 +136,34 @@ int dynamic_table_add(DYNAMIC_TABLE *dynamic, char *name, char *value, char *err
     
     if( strlen(name) > MAX_HEADER_FIELD_NAME_SIZE ){
         if( error != NULL) sprintf(error, "size of header name is too bigger");
-        return HM_RETURN_EXCEED_SIZE;
+        return HPACK_RETURN_EXCEED_SIZE;
     }
     STRCPY(nhf->name, name);
     
     if( strlen(value) > MAX_HEADER_FIELD_VALUE_SIZE ){
         if( error != NULL) sprintf(error, "size of header value is too bigger");
-        return HM_RETURN_EXCEED_SIZE;
+        return HPACK_RETURN_EXCEED_SIZE;
     }
     STRCPY(nhf->value, value);
     LIST_APPEND(dynamic->header_fields, nhf);
     dynamic->size++;
     
-	return HM_RETURN_SUCCESS;
+	return HPACK_RETURN_SUCCESS;
 }
 
 int dynamic_table_replace(char *name, char *value){
 	if( STRLEN(value) > MAX_HEADER_VALUE_SIZE ){
-		return HM_RETURN_EXCEED_SIZE;
+		return HPACK_RETURN_EXCEED_SIZE;
 	}
 	int i = 0;
 	for(i = 0; i < dynamic_table_length;i++){
 		if( STRCMP(name, dynamic_table[i].name) ){
 			STRCPY(dynamic_table[i].value, value);
-			return HM_RETURN_SUCCESS;
+			return HPACK_RETURN_SUCCESS;
 		}
 	}
 	
-	return HM_RETURN_NOT_FOUND_NAME;
+	return HPACK_RETURN_NOT_FOUND_NAME;
 }
 
 int dynamic_table_delete(char *name){
@@ -169,20 +172,20 @@ int dynamic_table_delete(char *name){
 		if( STRCMP(name, dynamic_table[i].name) ){
 			STRRESET(dynamic_table[i].name);
 			STRRESET(dynamic_table[i].value);
-			return HM_RETURN_SUCCESS;
+			return HPACK_RETURN_SUCCESS;
 		}
 	}
 	
-	return HM_RETURN_NOT_FOUND_NAME;
+	return HPACK_RETURN_NOT_FOUND_NAME;
 }
 
 int dynamic_table_search(DYNAMIC_TABLE *dynamic, char *name, char *value, int sensitive, int *isMatch, char *error){
     if( dynamic == NULL ){
         if( error != NULL) sprintf(error, "DYNAMIC_TABLE* was NULL");
-        return HM_RETURN_NULL_POINTER;
+        return HPACK_RETURN_NULL_POINTER;
     }
     int idx         = 0;
-    int idy         = 1;
+    int idy         = 0;
     int is_match    = 0; 
     int i           = 0;
     
@@ -202,20 +205,28 @@ int dynamic_table_search(DYNAMIC_TABLE *dynamic, char *name, char *value, int se
         if( !STRCMP(STATIC_TABLE[i].value, value) ){
             continue;
         }
-        
-        idx = i+1;
-        (*isMatch) = is_match;
+        is_match    = 1;
+        idx         = i+1;
+        (*isMatch)  = is_match;
         return idx;
     }
     
+    if( dynamic->header_fields == NULL ){
+        return idx;
+    }
 
     HEADER_FIELD *tmp_hf = dynamic->header_fields->prev;
+    i = 0;
     while( tmp_hf ){
-        if( STRCMP(tmp_hf->name, name) && STRCMP(tmp_hf->value, value) ){
-            is_match = 1;
-            break;
-        }
-        idy++;
+        i++;
+        if( STRCMP(tmp_hf->name, name) ) {
+            idy = i;
+            if( STRCMP(tmp_hf->value, value) ){
+                is_match = 1;
+                break;
+            }
+        } 
+        
         tmp_hf = tmp_hf->prev;
         if( tmp_hf == dynamic->header_fields->prev){
             break;
@@ -239,7 +250,7 @@ static HEADER_FIELD * header_allocate(){
 }
 
 int header_dynamic_append(HEADER_FIELD *header, char *name, char *value){
-    if(header = NULL){
+    if(header == NULL){
         return -1;
     }
     HEADER_FIELD *hf    = (HEADER_FIELD*)malloc(1*sizeof(HEADER_FIELD));
@@ -249,21 +260,62 @@ int header_dynamic_append(HEADER_FIELD *header, char *name, char *value){
     STRCPY(hf->name, name);
     STRCPY(hf->value, value);
     LIST_APPEND(header, hf);
+    return HPACK_RETURN_SUCCESS;
 }
 
-int header_encode(HEADER_FIELD *header, char **enc_buff){
-    HEADER_FIELD *tmp_hf = header;
-    int size_out        = 0;
-    char *buff_out      = (char *)malloc(1024*sizeof(char));
-    while(tmp_hf){
-        
-        hf_string_encode(tmp_hf->name, tmp_hf->value, 0, buff_out, size_out);
-        
-        tmp_hf = tmp_hf->next;
-        if(tmp_hf == header){
+int header_encode(int index_type, HEADER_FIELD *hf, unsigned char *enc_buff, char *error){
+    if( hf == NULL ){
+        if( error != NULL ) sprintf(error, "HEADER_FIELD* was empty");
+        return HPACK_RETURN_NULL_POINTER;
+    }
+    
+    if(hf->name == NULL || hf->value == NULL ){
+         if( error != NULL ) sprintf(error, "The name or value was empty");
+        return HPACK_RETURN_NULL_POINTER;
+    }
+    
+    int sz_out  = 0;
+    int vlen    = strlen(hf->value);
+    
+    switch( index_type ){
+        case INCREMENT_WITH_INDEXED_NAME:{
+            int ecoded_len = hf_string_encode_len((unsigned char*)hf->value, vlen);
+            if( ecoded_len <= vlen ){
+                enc_buff[0] = vlen;
+                memcpy(&enc_buff[1], hf->value, vlen);
+                sz_out = vlen;
+            }else{
+                if( hf_string_encode(hf->value, vlen, 0, enc_buff, &sz_out) != HM_RETURN_SUCCESS ){
+                    if( error != NULL ) sprintf(error, "hf_string_encode return error");
+                    return HPACK_RETURN_ERR_ENCODE;
+                }
+            }
+            
             break;
         }
+        case INCREMENT_INDEXING_WITH_NEW_NAME:
+        case WITHOUT_INDEXING_WITH_INDEXED_NAME:
+        case WITHOUT_INDEXING_WITH_NEW_NAME:
+        case NEVER_INDEXED_WITH_INDEXED_NAME:
+        case NEVER_INDEXED_WITH_NEW_NAME:   
+        default:
+        break;
     }
-    *enc_buff = buff_out;
-    return size_out;
+    
+    return sz_out;
+}
+
+int header_decode(DYNAMIC_TABLE *decode, unsigned *enc_buff, int size, HEADER_FIELD **header, char *error){
+    int i   = 0;
+    int idx = 0;
+    //TODO: decode 
+    while( i < size ){
+        idx = enc_buff[i];
+        if( idx & 0x80 ){
+            
+        }else if( idx & 0x40 ){
+            
+        }
+    }
+    return 0;
 }

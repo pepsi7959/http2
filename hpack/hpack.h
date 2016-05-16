@@ -14,6 +14,15 @@
 #define LITERAL_HEADER_NEVER_INDEXING_FIELD			0x10
 #define DYNAMIC_HEADER_UPDATE_FIELD					0x20
 
+enum INDEXING_TYPE{
+    INCREMENT_WITH_INDEXED_NAME = 0,
+    INCREMENT_INDEXING_WITH_NEW_NAME,
+    WITHOUT_INDEXING_WITH_INDEXED_NAME,
+    WITHOUT_INDEXING_WITH_NEW_NAME,
+    NEVER_INDEXED_WITH_INDEXED_NAME,
+    NEVER_INDEXED_WITH_NEW_NAME,
+    
+};
 
 // DONOT edit sequence of enum
 enum STATIC_TABLE_EM{
@@ -80,16 +89,16 @@ enum STATIC_TABLE_EM{
 	IDX_WWW_AUTHENTICATE	        = 0x3d,
 };
 
-enum HM_RETURN_CODE{
-	HM_RETURN_SUCCESS		        = 0,
-	HM_RETURN_INVALID_LENGTH        = -1,
-	HM_RETURN_NOT_FOUND_NAME        = -2,
-	HM_RETURN_EXIST_NAME	        = -3,
-	HM_RETURN_EXCEED_SIZE	        = -4,
-    HM_RETURN_NULL_POINTER          = -5,
-	HM_RETURN_UNIMPLEMENT	        = -100,
-
-	HM_RETURN_UNKOWN_HEADER_FIELD   = -200,
+enum HPACK_RETURN_CODE{
+	HPACK_RETURN_SUCCESS		        = 0,
+	HPACK_RETURN_INVALID_LENGTH         = -1,
+	HPACK_RETURN_NOT_FOUND_NAME         = -2,
+	HPACK_RETURN_EXIST_NAME	            = -3,
+	HPACK_RETURN_EXCEED_SIZE	        = -4,
+    HPACK_RETURN_NULL_POINTER           = -5,
+	HPACK_RETURN_UNIMPLEMENT	        = -100,
+    HPACK_RETURN_ERR_ENCODE             = -101,
+	HPACK_RETURN_UNKOWN_HEADER_FIELD    = -200,
 };
 
 struct header_field{
@@ -111,17 +120,16 @@ struct _dynamic_table_t{
 
 typedef struct _dynamic_table_t DYNAMIC_TABLE;
 
-static HEADER_FIELD dynamic_table[MAX_DYNAMIC_TABLE_SIZE];
-static int dynamic_table_length;
 extern HEADER_FIELD static_table[];
 
 int dynamic_table_init(int size);
+int dynamic_table_update(int size);
 int dynamic_table_add(DYNAMIC_TABLE *dynamic, char *name, char *value, char *error);
+int dynamic_table_search(DYNAMIC_TABLE *dynamic_table ,char *name, char *value, int sensitive, int *isMatch, char *error);
 int dynamic_table_replace(char *name, char *value);
 int dynamic_table_delete(char *name);
-int dynamic_table_search(DYNAMIC_TABLE *dynamic_table ,char *name, char *value, int sensitive, int *isMatch, char *error);
 int header_static_append(HEADER_FIELD *header, int index, char *value);
 int header_dynamic_append(HEADER_FIELD *header, char *name, char *value);
-int header_encode(HEADER_FIELD *header, char **enc_buff);
-int header_decode(unsigned *enc_buff, HEADER_FIELD **header);
+int header_encode(int index_type, HEADER_FIELD *hf, unsigned char *enc_buff, char *error);
+int header_decode(DYNAMIC_TABLE *decode, unsigned *enc_buff, int size, HEADER_FIELD **header, char *error);
 #endif

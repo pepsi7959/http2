@@ -12,13 +12,13 @@ int test_dynamic_table_add(){
     ASSERT( dt != NULL);
     memset(dt, 0 , sizeof(DYNAMIC_TABLE));
     
-    ASSERT( dynamic_table_add(dt, ":path", "/insertSubscriber", error) == HM_RETURN_SUCCESS);
+    ASSERT( dynamic_table_add(dt, ":path", "/insertSubscriber", error) == HPACK_RETURN_SUCCESS);
     ASSERT( dt->size == 1 );
     ASSERT( dt->header_fields != NULL );
     ASSERT( strcmp(dt->header_fields->name,":path") == 0 );
     ASSERT( strcmp(dt->header_fields->value, "/insertSubscriber") == 0 );
     
-    ASSERT( dynamic_table_add(dt, ":scheme", "http", error) == HM_RETURN_SUCCESS);
+    ASSERT( dynamic_table_add(dt, ":scheme", "http", error) == HPACK_RETURN_SUCCESS);
     ASSERT( dt->size == 2 );
     ASSERT( dt->header_fields != NULL );
     ASSERT( strcmp(dt->header_fields->prev->name,":scheme") == 0 );
@@ -35,15 +35,15 @@ int test_dynamic_table_search(){
     DYNAMIC_TABLE *dt = (DYNAMIC_TABLE*)malloc(sizeof(DYNAMIC_TABLE));
     ASSERT( dt != NULL);
     memset(dt, 0 , sizeof(DYNAMIC_TABLE));
-    ASSERT( dynamic_table_add(dt, ":path", "/insertSubscriber64", error) == HM_RETURN_SUCCESS);
-    ASSERT( dynamic_table_add(dt, ":path", "/insertSubscriber63", error) == HM_RETURN_SUCCESS);
-    ASSERT( dynamic_table_add(dt, ":path", "/insertSubscriber62", error) == HM_RETURN_SUCCESS);
+    ASSERT( dynamic_table_add(dt, ":path", "/insertSubscriber64", error) == HPACK_RETURN_SUCCESS);
+    ASSERT( dynamic_table_add(dt, ":path", "/insertSubscriber63", error) == HPACK_RETURN_SUCCESS);
+    ASSERT( dynamic_table_add(dt, ":path", "/insertSubscriber62", error) == HPACK_RETURN_SUCCESS);
     
     idx = dynamic_table_search(dt, ":path", "/insertSubscriber63", 0, &isMatch, error);
     ASSERT( idx == 63 );
     ASSERT( isMatch == 1);
     
-    ASSERT( dynamic_table_add(dt, ":scheme", "ldap", error) == HM_RETURN_SUCCESS);
+    ASSERT( dynamic_table_add(dt, ":scheme", "ldap", error) == HPACK_RETURN_SUCCESS);
     idx = dynamic_table_search(dt, ":scheme", "ldap", 0, &isMatch, error);
     ASSERT( idx == 62);
     ASSERT( isMatch == 1);
@@ -54,7 +54,7 @@ int test_dynamic_table_search(){
     
     idx = dynamic_table_search(dt, ":scheme", "http", 0, &isMatch, error);
     ASSERT( idx == 6);
-    ASSERT( isMatch == 0);
+    ASSERT( isMatch == 1);
     
 
     
