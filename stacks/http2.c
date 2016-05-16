@@ -12,6 +12,8 @@
 #include "http2.h"
 #include "linkedlist.h"
 #include "frame.h"
+#include "huffman.h"
+
 
 #define ADJUST_SIZE(_l, _s)				\
 {										\
@@ -25,7 +27,7 @@ unsigned char HTTP2_PREFACE[]                   = {0x50,0x52,0x49,0x20,0x2a,0x20
                                                     0x0d,0x0a,0x53,0x4d,0x0d,0x0a,0x0d,0x0a};
 unsigned char HTTP2_DEFAULT_FRAME_SETTING[]     = {0x00,0x00,0x00,0x04,0x00,0x00,0x00,0x00,0x00};
 unsigned char HTTP2_DEFAULT_FRAME_SETTING_ACK[] = {0x00,0x00,0x00,0x04,0x01,0x00,0x00,0x00,0x00};
-unsigned char HTTP2_DEFAULT_FRAME_WINDOWS[]     = {0x00,0x00,0x04,0x08,0x00,0x00,0x00,0x00,0x00,
+unsigned char HTTP2_DEFAULT_FRAME_WINDOWS[]     = {0x00,0x00,0x04,0x08,0x00,0x00,0x00,0x00  ,0x00,
                                                     0x00,0x0e,0xff,0x01};
 
 static int HTTP2_alloc_buffer(HTTP2_BUFFER **data, int len){
@@ -287,6 +289,13 @@ int HTTP2_open(HTTP2_HOST *hc, HTTP2_CONNECTION **hconn, char *error){
     conn->r_buffer          = NULL;
     conn->prev              = NULL;
     conn->next              = NULL;
+    conn->streamID          = 1;
+    conn->enc               = malloc(sizeof(DYNAMIC_TABLE));
+    conn->dec               = malloc(sizeof(DYNAMIC_TABLE));
+    
+    memset(conn->enc, 0, sizeof(DYNAMIC_TABLE));
+    memset(conn->dec, 0, sizeof(DYNAMIC_TABLE));
+    
     if (conn->w_buffer == NULL)
     {
         if (error!=NULL)
@@ -560,6 +569,7 @@ int HTTP2_decode(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, char *error){
     if( ret != HTTP2_RETURN_NO_ERROR){
         return HTTP2_RET_ERR_DECODE;
     }
+    printf("[%d], ", frame->streamID);
     switch( frame->type ){
         case HTTP2_FRAME_DATA:
             printf("Obtained HTTP2_FRAME_DATA Frame\n");
@@ -575,10 +585,13 @@ int HTTP2_decode(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, char *error){
             printf("Obtained HTTP2_FRAME_RST_STREAM Frame\n");
             break;
         case HTTP2_FRAME_SETTINGS:
-            printf("Obtained HTTP2_FRAME_SETTINGS Frame\n");
-            printf("Ack SETTINGS Frame\n");
-            if( frame->flags == 0)
+            if( frame->flags == 0){
+                printf("Obtained HTTP2_FRAME_SETTINGS Frame\n");
+                printf("Ack SETTINGS Frame\n");
                 (void) HTTP2_send_direct_to_buffer(conn, HTTP2_DEFAULT_FRAME_SETTING_ACK, sizeof(HTTP2_DEFAULT_FRAME_SETTING_ACK), error);
+            }else{
+                printf("Obtained HTTP2_FRAME_SETTINGS Ack Frame\n");
+            }
             break;
         case HTTP2_FRAME_PUSH_PROMISE:
             printf("Obtained HTTP2_FRAME_PUSH_PROMISE Frame\n");
@@ -602,4 +615,182 @@ int HTTP2_decode(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, char *error){
     
     
     return ret;
+}
+
+int HTTP2_write_header(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, HTTP2_BUFFER **header_block, HEADER_FIELD *hf, char *error){
+    
+    int isMatch = 0;
+    int idx = dynamic_table_search(conn->enc , hf->name, hf->value, hf->sensitive, &isMatch, error);
+    HTTP2_BUFFER* buffer = NULL;
+    
+    if( header_block == NULL ){
+        if(error != NULL) sprintf(error, "*header_block is empty");
+        return HTTP2_RET_ERR_MEMORY;
+    }
+    
+    buffer = *header_block;
+
+    if( isMatch == 1){
+        if( buffer->data != NULL){
+            idx |= 0x80;
+            buffer->data[buffer->len] = (unsigned char)idx;
+            buffer->len += 1;
+        }else{
+            if(error != NULL) sprintf(error, "The header_block was NULL");
+            return HTTP2_RET_ERR_MEMORY;
+        }
+    }else{
+        if( idx == 0){
+            idx = 0x40;
+            buffer->data[buffer->len] = (unsigned char)idx;
+            buffer->len += 1;
+                        
+            //huffman encode
+            //TODO: Supported large attribute size
+            unsigned char *lv   = &buffer->data[buffer->len];
+            buffer->len         += 1;
+            int vlen            = strlen(hf->name);
+            int enc_len         = hf_string_encode_len((unsigned char*)hf->name, vlen);
+                       
+            if( enc_len >= vlen){
+                memcpy(buffer->data+buffer->len,hf->name, vlen);
+                *lv             = vlen;
+                buffer->len     += vlen;
+            }else{
+                int sz_out = 0;
+                hf_string_encode(hf->name, vlen, 0, buffer->data+buffer->len, &sz_out);
+                *lv             = sz_out|0x80;
+                buffer->len     += sz_out;
+            }
+           
+            
+            //TODO: Supported large attribute size
+            lv   = &buffer->data[buffer->len];
+            buffer->len         += 1;
+            vlen                = strlen(hf->value);
+            enc_len             = hf_string_encode_len((unsigned char *)hf->value, vlen);
+            if( enc_len >= vlen){
+                memcpy(buffer->data+buffer->len,hf->value, vlen);
+                *lv             = vlen;
+                buffer->len     += vlen;
+            }else{
+                int sz_out = 0;
+                hf_string_encode(hf->value, vlen, 0, buffer->data+buffer->len, &sz_out);
+                *lv             = sz_out|0x80;
+                buffer->len         += sz_out;
+            }
+            
+            if( dynamic_table_add(conn->enc, hf->name, hf->value, error) ){
+                return HTTP2_RET_ERR_ENCODE;
+            }
+            
+        }else{
+            idx |= 0x40;
+            buffer->data[buffer->len] = (unsigned char)idx;
+            buffer->len += 1;
+            
+            //huffman encode
+            //TODO: Supported large attribute size
+            unsigned char *lv   = &buffer->data[buffer->len];
+            buffer->len         += 1;
+            int vlen            = strlen(hf->value);
+            int enc_len         = hf_string_encode_len((unsigned char*)hf->value, vlen);
+            if( enc_len >= vlen && 0){
+                memcpy(buffer->data+buffer->len,hf->value, vlen);
+                *lv             = vlen;
+                buffer->len     += vlen;
+            }else{
+                int sz_out = 0;
+                hf_string_encode(hf->value, vlen, 0, buffer->data+buffer->len, &sz_out);
+                *lv             = sz_out|0x80;
+                buffer->len         += sz_out;
+            }
+            
+            if( dynamic_table_add(conn->enc, hf->name, hf->value, error) ){
+                return HTTP2_RET_ERR_ENCODE;
+            }
+
+         }
+    }
+    return HTTP2_RET_OK;
+}
+
+int HTTP2_send_message(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, HTTP2_BUFFER *header_block, HTTP2_BUFFER *data, char *error){
+
+    if( header_block->len > (conn->w_buffer->size - conn->w_buffer->len) ){
+        //TODO allocate wbuffer
+        if(error != NULL) sprintf(error, "Not enough buffer");
+        return HTTP2_RET_ERR_MEMORY;
+    }
+    unsigned char tbuff[256];
+    int len = 0;
+    int frame_len = header_block->len;
+    
+    /* Create HEADERS frame */
+    //write length  3 bytes
+    len = hf_integer_encode(frame_len, 0, tbuff);
+    memset(&conn->w_buffer->data[conn->w_buffer->len], 0, 3);
+    memcpy(&conn->w_buffer->data[conn->w_buffer->len+3-len], tbuff, len);
+    conn->w_buffer->len += 3;
+    
+    
+    //write type    1 byte
+    conn->w_buffer->data[conn->w_buffer->len] = 1;
+    conn->w_buffer->len += 1;
+    
+    //write flag    1 byte
+    conn->w_buffer->data[conn->w_buffer->len] = 4;
+    conn->w_buffer->len += 1;
+    
+    //write stream  4 bytes;
+    len = hf_integer_encode(conn->streamID, 0, tbuff);
+    memset(&conn->w_buffer->data[conn->w_buffer->len], 0, 4);
+    memcpy(&conn->w_buffer->data[conn->w_buffer->len+4-len], tbuff, len);
+    conn->w_buffer->len += 4;
+    
+    //write data
+    memcpy(&conn->w_buffer->data[conn->w_buffer->len], header_block->data, header_block->len );
+    conn->w_buffer->len += header_block->len;
+    
+    
+    /* Create DATA frame */
+    //write length  3 bytes
+    len = hf_integer_encode(data->len+5, 0, tbuff);// 5 = size of delimiter message
+    memset(&conn->w_buffer->data[conn->w_buffer->len], 0, 3);
+    memcpy(&conn->w_buffer->data[conn->w_buffer->len+3-len], tbuff, len);
+    conn->w_buffer->len += 3;
+    
+    
+    //write type    1 byte
+    conn->w_buffer->data[conn->w_buffer->len] = 0;
+    conn->w_buffer->len += 1;
+    
+    //write flag    1 byte
+    conn->w_buffer->data[conn->w_buffer->len] = 1;
+    conn->w_buffer->len += 1;
+    
+    //write stream  4 bytes;
+    len = hf_integer_encode(conn->streamID, 0, tbuff);
+    memset(&conn->w_buffer->data[conn->w_buffer->len], 0, 4);
+    memcpy(&conn->w_buffer->data[conn->w_buffer->len+4-len], tbuff, len);
+    conn->w_buffer->len += 4;
+    
+    //write compress flag   1 bytes
+    conn->w_buffer->data[conn->w_buffer->len] = 0;
+    conn->w_buffer->len += 1;
+    
+    //write message length  4 bytes
+    len = hf_integer_encode(data->len, 0, tbuff);
+    memset(&conn->w_buffer->data[conn->w_buffer->len], 0, 4);
+    memcpy(&conn->w_buffer->data[conn->w_buffer->len+4-len], tbuff, len);
+    conn->w_buffer->len += 4;
+    
+    //write data
+    memcpy(&conn->w_buffer->data[conn->w_buffer->len], data->data, data->len );
+    conn->w_buffer->len += data->len;
+
+    conn->streamID  += 2;
+        
+    return HTTP2_RET_OK;
+    
 }

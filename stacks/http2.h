@@ -1,6 +1,7 @@
 #ifndef HTTP2_H
  #define HTTP2_H
  #include "common.h"
+ #include "hpack.h"
 
 #define HTTP2_MAX_STRING_HOST                   128
 #define HTTP2_MAX_CONNECTION                    4096
@@ -31,6 +32,7 @@ enum HTTP2_RET_CODE{
     HTTP2_RET_ERR_MEMORY        = -5,
     HTTP2_RET_ERR_SEND          = -6,
     HTTP2_RET_ERR_DECODE        = -7,
+    HTTP2_RET_ERR_ENCODE        = -8,
 };
 
 typedef struct _clnt_addr_t{
@@ -90,6 +92,8 @@ typedef struct _connection_t{
     int                     streamID;
     int                     state;
     
+    DYNAMIC_TABLE           *enc;
+    DYNAMIC_TABLE           *dec;
 }HTTP2_CONNECTION;
 
 typedef struct _host_t{
@@ -119,6 +123,7 @@ typedef struct _host_t{
     HTTP2_CONNECTION        *wait_queue;
     HTTP2_CONNECTION        *connection_pool[HTTP2_MAX_CONNECTION];
     HTTP2_BUFFER            *send_msg_queue;
+    void                    *context;
 }HTTP2_HOST;
 
 extern HTTP2_HOST *HTTP2_HOSTS[];
@@ -131,6 +136,9 @@ int HTTP2_read(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, char *error);            
 int HTTP2_close();                                                              /* Close connection */
 int HTTP2_decode(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, char *error);
 int HTTP2_encode(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, char *error);
+int HTTP2_write_header(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, HTTP2_BUFFER **header_block, HEADER_FIELD *hf, char *error);
+
+int HTTP2_send_message(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, HTTP2_BUFFER *header_block, HTTP2_BUFFER *data, char *error);
 int HTTP2_stream_open(int streamID);
 int HTTP2_stream_close(int streamID);
 
