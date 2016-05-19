@@ -495,14 +495,16 @@ int HTTP2_read(HTTP2_CONNECTION *conn, char *error){
         sprintf(error, "HTTP2_HOST* is NULL");
         return HTTP2_RET_INVALID_PARAMETER;
     }
-    
+    /*
     if (conn->state == HTTP2_CONNECTION_STATE_OPEN)
     {
         if (error!=NULL)
             sprintf(error, "connection isn't ready");
         return HTTP2_RET_ERR_CONNECT;
     }
-    else if (conn->state == HTTP2_CONNECTION_STATE_CONNECTING)
+    else 
+        */
+    if (conn->state == HTTP2_CONNECTION_STATE_CONNECTING || conn->state == HTTP2_CONNECTION_STATE_OPEN)
     {
         int e = 0;
         socklen_t elen = sizeof(e);
