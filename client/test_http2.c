@@ -46,6 +46,8 @@ int test_HTTP2_open(){
     ASSERT( strcmp(hc->list_addr->host, "127.0.0.1") == 0 );
     ASSERT( hc->list_addr->port == 50051 );
     ASSERT( hc->list_addr->max_connection == 10 );
+    ASSERT( hc->list_addr_count == 1);
+    
     
     if( (r = HTTP2_open(hc, &conn, error)) != HTTP2_RET_OK ){
         DEBUG("test_HTTP2_open() return %d,0x[%s]\n", r, error);
