@@ -903,7 +903,7 @@ int HTTP2_host_create(HTTP2_HOST **hc, char *name, char *error){
     nhc->list_addr           = NULL;
     nhc->max_concurrent      = HTTP2_MAX_CONCURRENCE;
     nhc->max_wbuffer         = HTTP2_MAX_WRITE_BUFFER_SIZE;
-    strcat(nhc->name, name);
+    strcpy(nhc->name, name);
     *hc = nhc;
     return HTTP2_RET_OK;
 }
@@ -923,7 +923,7 @@ int HTTP2_addr_add(HTTP2_HOST *hc, char *host, int port, int max_connection, cha
     addr->next              = NULL;
     addr->prev              = NULL;
     addr->max_connection    = max_connection;
-    strcat(addr->host, host);
+    strcpy(addr->host, host);
     
     LINKEDLIST_APPEND(hc->list_addr, addr);
     
