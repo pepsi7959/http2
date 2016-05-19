@@ -17,7 +17,9 @@ int GRPC_send_request(GRPC_BUFFER *buffer);
 int GRPC_send_resolve(GRPC_BUFFER *buffer);
 int GRPC_send_register(GRPC_BUFFER *buffer);
 
-int GRPC_gen_entry(Pb__Entry **entry, char *dn, char *attr[128], int attr_len, char *error);
+int GRPC_gen_entry(Pb__Entry **entry,char *dn, char *objectclass, char *attr[128], int attr_len, char *error);
+int GRPC_gen_modify_entry(Pb__Entry **entry,char *dn, char *attr[128], int attr_len, char *error);
+
 
 int GRPC_gen_delete_request(GRPC_BUFFER **buffer, char *base_dn, int flags, char *error);
 int GRPC_gen_add_request(GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *entry, int flags, char *error);

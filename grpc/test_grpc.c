@@ -214,11 +214,9 @@ int test_Decode_from_data(){
     decode_req  = pb__request__unpack(NULL, len, (void*)&buf);
     
     ASSERT(decode_req != NULL);
-    DEBUG("Expect Value : %lu", decode_req->id );
     ASSERT(decode_req->has_id == 1);
     ASSERT(decode_req->id == 14258489482789717250llu);
     ASSERT(decode_req->scope == PB__SEARCH_SCOPE__BaseObject);
-    DEBUG("Expect Value : %d", decode_req->scope );
     ASSERT(strcmp(decode_req->basedn, "uid=000000000000000,ds=SUBSCRIBER,o=AIS,dc=C-NTDB") == 0);
     ASSERT(strcmp(decode_req->filter, "(objectClass=*)") == 0);
     ASSERT(decode_req->dn == NULL);
@@ -242,24 +240,60 @@ int test_GRPC_gen_search_request(){
 
     decode_req  = pb__request__unpack(NULL, buffer->len, (void*)buffer->data);
     ASSERT(decode_req != NULL);
-    ASSERT(decode_req->id == 10);
+    ASSERT(decode_req->id == 14258489482789717250llu);
     ASSERT(decode_req->scope == PB__SEARCH_SCOPE__BaseObject);
-    //ASSERT(strcmp(decode_req->basedn, "dc=C-NTDB") == 0);
-    ASSERT(strcmp(decode_req->dn, "uid=000000000000000,ds=SUBSCRIBER,o=AIS,dc=C-NTDB") == 0);
+    ASSERT(strcmp(decode_req->dn, "dc=C-NTDB") == 0);
+    ASSERT(strcmp(decode_req->basedn, "uid=000000000000000,ds=SUBSCRIBER,o=AIS,dc=C-NTDB") == 0);
     ASSERT(strcmp(decode_req->filter, "(objectClass=*)") == 0);
-    ASSERT(decode_req->recursive == 1);
+    ASSERT(decode_req->recursive == 0);
     ASSERT(decode_req->entry == NULL);
     pb__request__free_unpacked(decode_req, NULL);
     
     return TEST_RESULT_SUCCESSED;
 }
 
+int test_GRPC_gen_entry(){
+    char error[1024];
+    Pb__Entry *entry = NULL;
+    
+    ASSERT( GRPC_gen_entry(&entry, "uid=000000000000000,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "subscriber",NULL, 2, error) == GRPC_RET_OK );
+    ASSERT( entry->dn != NULL );
+    ASSERT( strcmp(entry->dn, "uid=000000000000000,ds=SUBSCRIBER,o=AIS,dc=C-NTDB") == 0 );
+    ASSERT( entry->n_attributes == 2 );
+    ASSERT( entry->attributes[0] != NULL );
+    ASSERT( entry->attributes[1] != NULL );
+    
+    ASSERT( strcmp(entry->attributes[0]->name, "objectClass" ) == 0);
+    ASSERT( strcmp(entry->attributes[0]->values[0], "subscriber") == 0);
+       
+    return TEST_RESULT_SUCCESSED;
+}
+
+int test_GRPC_gen_modify_entry(){
+    char error[1024];
+    Pb__Entry *entry = NULL;
+    
+    ASSERT( GRPC_gen_entry(&entry, "uid=000000000000000,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "subscriber",NULL, 2, error) == GRPC_RET_OK );
+    ASSERT( entry->dn != NULL );
+    ASSERT( strcmp(entry->dn, "uid=000000000000000,ds=SUBSCRIBER,o=AIS,dc=C-NTDB") == 0 );
+    ASSERT( entry->n_attributes == 2 );
+    ASSERT( entry->attributes[0] != NULL );
+    ASSERT( entry->attributes[1] != NULL );
+    
+    ASSERT( strcmp(entry->attributes[0]->name, "objectClass" ) == 0);
+    ASSERT( strcmp(entry->attributes[0]->values[0], "subscriber") == 0);
+       
+    return TEST_RESULT_SUCCESSED;
+}
+
+
 void test_all(){
     UNIT_TEST(test_helloworld());
     UNIT_TEST(test_Pb__Request());
     UNIT_TEST(test_Decode_from_data());
     UNIT_TEST(test_GRPC_gen_search_request());
-    UNIT_TEST(test_Pb__Response());   
+    UNIT_TEST(test_Pb__Response());  
+    UNIT_TEST(test_GRPC_gen_entry());
 }
 
 int main(){
