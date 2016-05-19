@@ -1,0 +1,31 @@
+all: test_http2
+
+FRAME_PATH=./../frame
+FRAME_INCLUDE=-I${FRAME_PATH}
+FRAME_SRC=${FRAME_PATH}/frame.c
+
+COMMON_PATH=./../common/
+COMMON_INCLUDE=-I${COMMON_PATH}
+
+HUFFMAN_PATH=./../huffman/
+HUFFMAN_INCLUDE=-I${HUFFMAN_PATH}
+HUFFMAN_SRC=${HUFFMAN_PATH}/huffman.c
+
+HPACK_PATH=./../hpack/
+HPACK_INCLUDE=-I${HPACK_PATH}
+HPACK_SRC=${HPACK_PATH}/hpack.c
+
+GRPC_PATH=./../grpc/
+GRPC_INCLUDE=-I${GRPC_PATH}
+GRPC_SRC=${GRPC_PATH}/grpc.c
+
+PROTO_PATH=./../proto
+PROTO_INCLUDE=-I${PROTO_PATH}
+PROTO_SRC=${PROTO_PATH}/d21.pb-c.c
+
+clean:
+	rm test_http2
+
+
+test_http2: test_http2.c http2.c
+	gcc -g -Wall -I. ${PROTO_INCLUDE} ${GRPC_INCLUDE} ${COMMON_INCLUDE} ${FRAME_INCLUDE} ${HUFFMAN_INCLUDE} ${HPACK_INCLUDE} ${HUFFMAN_SRC} ${FRAME_SRC} ${HPACK_SRC} ${PROTO_SRC} ${GRPC_SRC} -lprotobuf-c -o test_http2 test_http2.c http2.c
