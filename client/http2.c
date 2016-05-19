@@ -924,7 +924,7 @@ int HTTP2_addr_add(HTTP2_HOST *hc, char *host, int port, int max_connection, cha
     addr->prev              = NULL;
     addr->max_connection    = max_connection;
     strcpy(addr->host, host);
-    hc->list_addr_count++;
+    
     LINKEDLIST_APPEND(hc->list_addr, addr);
     
     return HTTP2_RET_OK;
