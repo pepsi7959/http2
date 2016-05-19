@@ -41,6 +41,8 @@ typedef struct _clnt_addr_t{
     char  host[HTTP2_MAX_STRING_HOST];
     int   port;
     int   connection_type;              // type = [ONLINE|STANDBY], default=ONLINE
+    int   connection_count;
+    int   max_connection;   
 }HTTP2_CLNT_ADDR;
 
 typedef struct _buffer_t HTTP2_BUFFER;
