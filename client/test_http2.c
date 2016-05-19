@@ -33,25 +33,19 @@ int test_HTTP2_open(){
     int r                   = 0;
     HTTP2_HOST *hc          = NULL;
     HTTP2_CONNECTION *conn  = NULL;
-
-    hc = (HTTP2_HOST*)malloc(sizeof(HTTP2_HOST));
-    memset(hc, 0, sizeof(HTTP2_HOST));
-    hc->ready_queue         = NULL;
-    hc->wait_queue          = NULL;
-    hc->max_connection      = HTTP2_MAX_CONNECTION;
-    hc->connection_count    = 0;
-    hc->list_addr           = NULL;
-    hc->max_concurrent      = 0;
-    hc->max_wbuffer         = HTTP2_MAX_WRITE_BUFFER_SIZE;
-    strcat(hc->name,"D21");
-
-    HTTP2_CLNT_ADDR *addr   = (HTTP2_CLNT_ADDR*)malloc(sizeof(HTTP2_CLNT_ADDR));
-    addr->port              = 50051;
-    addr->next              = NULL;
-    addr->prev              = NULL;
-    strcat(addr->host, "127.0.0.1");
     
-    LINKEDLIST_APPEND(hc->list_addr, addr);
+    ASSERT( HTTP2_host_create(&hc, "d21", error) == HTTP2_RET_OK );
+    ASSERT( hc != NULL );
+    ASSERT( strcmp(hc->name, "d21") == 0);
+    ASSERT( hc->max_concurrent == HTTP2_MAX_CONCURRENCE );
+    
+    ASSERT( HTTP2_addr_add(hc, "127.0.0.1", 50051, 10, error) == HTTP2_RET_OK );
+    ASSERT( hc->list_addr != NULL );
+    ASSERT( hc->list_addr->next == hc->list_addr);
+    ASSERT( hc->list_addr->prev == hc->list_addr);
+    ASSERT( strcmp(hc->list_addr->host, "127.0.0.1") == 0 );
+    ASSERT( hc->list_addr->port == 50051 );
+    ASSERT( hc->list_addr->max_connection == 10 );
     
     if( (r = HTTP2_open(hc, &conn, error)) != HTTP2_RET_OK ){
         DEBUG("test_HTTP2_open() return %d,0x[%s]\n", r, error);
@@ -60,7 +54,6 @@ int test_HTTP2_open(){
     
     ASSERT(hc->connection_count == 1);
     ASSERT(hc->wait_queue != NULL);
-    ASSERT(hc->list_addr == addr);
     ASSERT(hc == conn->ref_group);
     ASSERT(conn->w_buffer->size < HTTP2_MAX_BUFFER_SISE);
     ASSERT(conn->dec != NULL);
@@ -84,25 +77,9 @@ int test_HTTP2_write(){
     HTTP2_HOST *hc          = NULL;
     HTTP2_CONNECTION *conn  = NULL;
 
-    hc = (HTTP2_HOST*)malloc(sizeof(HTTP2_HOST));
-    memset(hc, 0, sizeof(HTTP2_HOST));
-    hc->max_connection      = HTTP2_MAX_CONNECTION;
-    hc->connection_count    = 0;
-    hc->list_addr           = NULL;
-    hc->max_concurrent      = 0;
-    hc->max_wbuffer         = HTTP2_MAX_WRITE_BUFFER_SIZE;
-    hc->ready_queue         = NULL;
-    hc->wait_queue          = NULL;
-    strcat(hc->name,"D21");
+    ASSERT( HTTP2_host_create(&hc, "d21", error) == HTTP2_RET_OK );
+    ASSERT( HTTP2_addr_add(hc, "127.0.0.1", 50051, 10, error) == HTTP2_RET_OK );
 
-    HTTP2_CLNT_ADDR *addr   = (HTTP2_CLNT_ADDR*)malloc(sizeof(HTTP2_CLNT_ADDR));
-    addr->port              = 50051;
-    addr->next              = NULL;
-    addr->prev              = NULL;
-    strcpy(addr->host, "127.0.0.1");
-    
-    LINKEDLIST_APPEND(hc->list_addr, addr);
-    
     if( (r = HTTP2_open(hc, &conn, error)) != HTTP2_RET_OK ){
         DEBUG("test_HTTP2_open() return %d,0x[%s]\n", r, error);
         return TEST_RESULT_FAILED;
@@ -110,7 +87,6 @@ int test_HTTP2_write(){
     
     ASSERT(hc->connection_count == 1);
     ASSERT(hc->wait_queue != NULL);
-    ASSERT(hc->list_addr == addr);
     ASSERT(hc == conn->ref_group);
     ASSERT(conn->w_buffer->size < HTTP2_MAX_BUFFER_SISE);
     
@@ -240,24 +216,8 @@ int test_HTTP2_decode(){
     HTTP2_HOST *hc          = NULL;
     HTTP2_CONNECTION *conn  = NULL;
 
-    hc = (HTTP2_HOST*)malloc(sizeof(HTTP2_HOST));
-    memset(hc, 0, sizeof(HTTP2_HOST));
-    hc->max_connection      = HTTP2_MAX_CONNECTION;
-    hc->connection_count    = 0;
-    hc->list_addr           = NULL;
-    hc->max_concurrent      = 0;
-    hc->max_wbuffer         = HTTP2_MAX_WRITE_BUFFER_SIZE;
-    hc->ready_queue         = NULL;
-    hc->wait_queue          = NULL;
-    strcpy(hc->name,"D21");
-
-    HTTP2_CLNT_ADDR *addr   = (HTTP2_CLNT_ADDR*)malloc(sizeof(HTTP2_CLNT_ADDR));
-    addr->port              = 50051;
-    addr->next              = NULL;
-    addr->prev              = NULL;
-    strcpy(addr->host, "127.0.0.1");
-    
-    LINKEDLIST_APPEND(hc->list_addr, addr);
+    ASSERT( HTTP2_host_create(&hc, "d21", error) == HTTP2_RET_OK );
+    ASSERT( HTTP2_addr_add(hc, "127.0.0.1", 50051, 10, error) == HTTP2_RET_OK );
     
     if( (r = HTTP2_open(hc, &conn, error)) != HTTP2_RET_OK ){
         DEBUG("test_HTTP2_open() return %d,0x[%s]\n", r, error);
@@ -266,7 +226,6 @@ int test_HTTP2_decode(){
     
     ASSERT(hc->connection_count == 1);
     ASSERT(hc->wait_queue != NULL);
-    ASSERT(hc->list_addr == addr);
     ASSERT(hc == conn->ref_group);
     ASSERT(conn->w_buffer->size < HTTP2_MAX_BUFFER_SISE);
     
@@ -294,7 +253,6 @@ int test_HTTP2_decode(){
     
     ASSERT(hc->connection_count == 1);
     ASSERT(hc->wait_queue != NULL);
-    ASSERT(hc->list_addr == addr);
     ASSERT(hc == conn->ref_group);
     ASSERT(conn->w_buffer->size < HTTP2_MAX_BUFFER_SISE);
     
@@ -403,24 +361,8 @@ int test_grpc(){
     HTTP2_HOST *hc          = NULL;
     HTTP2_CONNECTION *conn  = NULL;
 
-    hc = (HTTP2_HOST*)malloc(sizeof(HTTP2_HOST));
-    memset(hc, 0, sizeof(HTTP2_HOST));
-    hc->max_connection      = HTTP2_MAX_CONNECTION;
-    hc->connection_count    = 0;
-    hc->list_addr           = NULL;
-    hc->max_concurrent      = 0;
-    hc->max_wbuffer         = HTTP2_MAX_WRITE_BUFFER_SIZE;
-    hc->ready_queue         = NULL;
-    hc->wait_queue          = NULL;
-    strcat(hc->name,"D21");
-
-    HTTP2_CLNT_ADDR *addr   = (HTTP2_CLNT_ADDR*)malloc(sizeof(HTTP2_CLNT_ADDR));
-    addr->port              = 6051;
-    addr->next              = NULL;
-    addr->prev              = NULL;
-    strcpy(addr->host, "10.252.169.12");
-    
-    LINKEDLIST_APPEND(hc->list_addr, addr);
+    ASSERT( HTTP2_host_create(&hc, "d21", error) == HTTP2_RET_OK );
+    ASSERT( HTTP2_addr_add(hc, "10.252.169.12", 6051, 10, error) == HTTP2_RET_OK );
     
     if( (r = HTTP2_open(hc, &conn, error)) != HTTP2_RET_OK ){
         DEBUG("test_HTTP2_open() return %d,0x[%s]\n", r, error);
@@ -429,7 +371,6 @@ int test_grpc(){
 
     ASSERT(hc->connection_count == 1);
     ASSERT(hc->wait_queue != NULL);
-    ASSERT(hc->list_addr == addr);
     ASSERT(hc == conn->ref_group);
     ASSERT(conn->w_buffer->size < HTTP2_MAX_BUFFER_SISE);
     
@@ -826,7 +767,7 @@ int test_HTTP2_send_message(){
 }
 
 void test_all(){
-	//UNIT_TEST(test_HTTP2_open());
+	UNIT_TEST(test_HTTP2_open());
     //UNIT_TEST(test_HTTP2_write());
     //UNIT_TEST(test_HTTP2_decode());
     //UNIT_TEST(test_grpc());

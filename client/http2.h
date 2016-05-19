@@ -5,6 +5,7 @@
 
 #define HTTP2_MAX_STRING_HOST                   128
 #define HTTP2_MAX_CONNECTION                    4096
+#define HTTP2_MAX_CONCURRENCE                   32
 #define HTTP2_MAX_HOST_NAME                     1024
 #define HTTP2_MAX_WRITE_BUFFER_SIZE             (4*1024*1024)
 #define HTTP2_MAX_READ_BUFFER_SIZE              (4*1024*1024)
@@ -131,8 +132,9 @@ typedef struct _host_t{
 
 extern HTTP2_HOST *HTTP2_HOSTS[];
 
-
-int HTTP2_open(HTTP2_HOST *host, HTTP2_CONNECTION **connect, char *error);      /* Estrabishes connnection to sever */
+int HTTP2_host_create(HTTP2_HOST **hc, char *name, char *error);
+int HTTP2_addr_add(HTTP2_HOST *hc, char *host, int port, int max_connection, char *error);
+int HTTP2_open(HTTP2_HOST *hc, HTTP2_CONNECTION **connect, char *error);      /* Estrabishes connnection to sever */
 int HTTP2_connect(HTTP2_HOST *hc, char *error);                                 /* Initialize HTTP2 PREFACE, setting, and widows updates*/
 int HTTP2_write(HTTP2_CONNECTION *conn, char *error);           /* Write data to TCP's buffer */
 int HTTP2_read(HTTP2_CONNECTION *conn, char *error);            /* Read from TCP's buffer */

@@ -64,13 +64,13 @@ static int HTTP2_write_direct(HTTP2_CONNECTION *conn, char *error){
     HTTP2_HOST *hc = NULL;
     
     if( (conn == NULL) ){
-        sprintf(error, "HTTP2_CONNECTION* was null");
+        sprintf(error, "HTTP2_CONNECTION* is NULL");
         return HTTP2_RET_INVALID_PARAMETER;
     }
 
     hc = (HTTP2_HOST *)conn->ref_group;
     if( (hc == NULL) ){
-        sprintf(error, "HTTP2_HOST* was null");
+        sprintf(error, "HTTP2_HOST* is NULL");
         return HTTP2_RET_INVALID_PARAMETER;
     }
     n = conn->w_buffer->len - conn->w_buffer->cur;
@@ -105,13 +105,13 @@ static int HTTP2_read_direct(HTTP2_CONNECTION *conn, char *error){
     HTTP2_HOST *hc = NULL;
     
     if( (conn == NULL) ){
-        sprintf(error, "HTTP2_CONNECTION* was null");
+        sprintf(error, "HTTP2_CONNECTION* is NULL");
         return HTTP2_RET_INVALID_PARAMETER;
     }
 
     hc = (HTTP2_HOST *)conn->ref_group;
     if( (hc == NULL) ){
-        sprintf(error, "HTTP2_HOST* was null");
+        sprintf(error, "HTTP2_HOST* is NULL");
         return HTTP2_RET_INVALID_PARAMETER;
     }
     
@@ -158,7 +158,7 @@ static int HTTP2_read_direct(HTTP2_CONNECTION *conn, char *error){
 
 static int HTTP2_send_direct_to_buffer(HTTP2_CONNECTION *conn, unsigned char *data, int sz, char *error){
     if( (conn == NULL) ){
-        sprintf(error, "HTTP2_CONNECTION* was null");
+        sprintf(error, "HTTP2_CONNECTION* is NULL");
         return HTTP2_RET_INVALID_PARAMETER;
     }
 
@@ -173,13 +173,13 @@ static int HTTP2_connect_setup_req(HTTP2_CONNECTION *conn, char *error){
     HTTP2_HOST *hc = NULL;
     
     if( (conn == NULL) ){
-        sprintf(error, "HTTP2_CONNECTION* was null");
+        sprintf(error, "HTTP2_CONNECTION* is NULL");
         return HTTP2_RET_INVALID_PARAMETER;
     }
 
     hc = (HTTP2_HOST *)conn->ref_group;
     if( (hc == NULL) ){
-        sprintf(error, "HTTP2_HOST* was null");
+        sprintf(error, "HTTP2_HOST* is NULL");
         return HTTP2_RET_INVALID_PARAMETER;
     }
     if( conn->state == HTTP2_CONNECTION_STATE_OPEN ){
@@ -201,13 +201,13 @@ static int HTTP2_connect_setup_res(HTTP2_CONNECTION *conn, char *error){
     HTTP2_HOST *hc              = NULL;
     
     if( (conn == NULL) ){
-        sprintf(error, "HTTP2_CONNECTION* was null");
+        sprintf(error, "HTTP2_CONNECTION* is NULL");
         return HTTP2_RET_INVALID_PARAMETER;
     }
 
     hc = (HTTP2_HOST *)conn->ref_group;
     if( (hc == NULL) ){
-        sprintf(error, "HTTP2_HOST* was null");
+        sprintf(error, "HTTP2_HOST* is NULL");
         return HTTP2_RET_INVALID_PARAMETER;
     }
     
@@ -407,13 +407,13 @@ int HTTP2_write(HTTP2_CONNECTION *conn, char *error){
     HTTP2_HOST *hc = NULL;
     
     if( (conn == NULL) ){
-        sprintf(error, "HTTP2_CONNECTION* was null");
+        sprintf(error, "HTTP2_CONNECTION* is NULL");
         return HTTP2_RET_INVALID_PARAMETER;
     }
 
     hc = (HTTP2_HOST *)conn->ref_group;
     if( (hc == NULL) ){
-        sprintf(error, "HTTP2_HOST* was null");
+        sprintf(error, "HTTP2_HOST* is NULL");
         return HTTP2_RET_INVALID_PARAMETER;
     }
         
@@ -486,13 +486,13 @@ int HTTP2_read(HTTP2_CONNECTION *conn, char *error){
     HTTP2_HOST *hc = NULL;
     
     if( (conn == NULL) ){
-        sprintf(error, "HTTP2_CONNECTION* was null");
+        sprintf(error, "HTTP2_CONNECTION* is NULL");
         return HTTP2_RET_INVALID_PARAMETER;
     }
 
     hc = (HTTP2_HOST *)conn->ref_group;
     if( (hc == NULL) ){
-        sprintf(error, "HTTP2_HOST* was null");
+        sprintf(error, "HTTP2_HOST* is NULL");
         return HTTP2_RET_INVALID_PARAMETER;
     }
     
@@ -630,13 +630,13 @@ int HTTP2_decode(HTTP2_CONNECTION *conn, char *error){
     HTTP2_HOST *hc              = NULL;
     
     if( (conn == NULL) ){
-        sprintf(error, "HTTP2_CONNECTION* was null");
+        sprintf(error, "HTTP2_CONNECTION* is NULL");
         return HTTP2_RET_INVALID_PARAMETER;
     }
 
     hc = (HTTP2_HOST *)conn->ref_group;
     if( (hc == NULL) ){
-        sprintf(error, "HTTP2_HOST* was null");
+        sprintf(error, "HTTP2_HOST* is NULL");
         return HTTP2_RET_INVALID_PARAMETER;
     }
     
@@ -722,7 +722,7 @@ int HTTP2_write_header(HTTP2_CONNECTION *conn, HTTP2_BUFFER **header_block, HEAD
             buffer->data[buffer->len] = (unsigned char)idx;
             buffer->len += 1;
         }else{
-            if(error != NULL) sprintf(error, "The header_block was NULL");
+            if(error != NULL) sprintf(error, "The header_block is NULL");
             return HTTP2_RET_ERR_MEMORY;
         }
     }else{
@@ -879,4 +879,53 @@ int HTTP2_send_message(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, HTTP2_BUFFER *hea
         
     return HTTP2_RET_OK;
     
+}
+
+int HTTP2_host_create(HTTP2_HOST **hc, char *name, char *error){
+    HTTP2_HOST *nhc          = NULL;
+    if( hc == NULL ){
+        if( error != NULL ) sprintf(error, "HTTP2_HOST** is NULL");
+        return HTTP2_RET_ERR_MEMORY;
+    }
+    
+
+    nhc = (HTTP2_HOST*)malloc(sizeof(HTTP2_HOST));
+    if( nhc == NULL ){
+        if( error != NULL ) sprintf(error, "Cannot allocate memory to HTTP2_HOST");
+        return HTTP2_RET_ERR_MEMORY;
+    }
+    
+    memset(nhc, 0, sizeof(HTTP2_HOST));
+    nhc->ready_queue         = NULL;
+    nhc->wait_queue          = NULL;
+    nhc->max_connection      = HTTP2_MAX_CONNECTION;
+    nhc->connection_count    = 0;
+    nhc->list_addr           = NULL;
+    nhc->max_concurrent      = HTTP2_MAX_CONCURRENCE;
+    nhc->max_wbuffer         = HTTP2_MAX_WRITE_BUFFER_SIZE;
+    strcat(nhc->name, name);
+    *hc = nhc;
+    return HTTP2_RET_OK;
+}
+
+int HTTP2_addr_add(HTTP2_HOST *hc, char *host, int port, int max_connection, char *error){
+    if( hc == NULL ){
+        if( error != NULL ) sprintf(error, "HTTP2_HOST* is NULL"); 
+        return HTTP2_RET_INVALID_PARAMETER;
+    }
+    
+    HTTP2_CLNT_ADDR *addr   = (HTTP2_CLNT_ADDR*)malloc(sizeof(HTTP2_CLNT_ADDR));
+    if( addr == NULL ){
+        if( error != NULL ) sprintf(error, "Cannot allocate memory to HTTP2_CLNT_ADDR*"); 
+            return HTTP2_RET_ERR_MEMORY;
+    }
+    addr->port              = port;
+    addr->next              = NULL;
+    addr->prev              = NULL;
+    addr->max_connection    = max_connection;
+    strcat(addr->host, host);
+    
+    LINKEDLIST_APPEND(hc->list_addr, addr);
+    
+    return HTTP2_RET_OK;
 }
