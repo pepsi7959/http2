@@ -721,6 +721,7 @@ int HTTP2_write_header(HTTP2_CONNECTION *conn, HTTP2_BUFFER **header_block, HEAD
         *header_block           = malloc(sizeof(HTTP2_BUFFER)+sizeof(1024));
         (*header_block)->size   = 1024;
         (*header_block)->len    = 0;
+        (*header_block)->cur    = 0;
     }
     
     buffer = *header_block;
