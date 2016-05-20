@@ -17,8 +17,8 @@
 
  
 struct _buffer_t{
-    struct HTTP2_buffer_t *prev;
-    struct HTTP2_buffer_t *next;
+    struct _buffer_t *prev;
+    struct _buffer_t *next;
     int size;
     int len;
     int cur;
