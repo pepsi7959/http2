@@ -22,6 +22,7 @@ enum HTTP2_CONNECTION_STATE{
 };
 
 enum HTTP2_RET_CODE{
+    HTTPP_RET_DATA_AVAILABLE    = 4,
     HTTP2_RET_NEED_MORE_DATA    = 3,
     HTTP2_RET_READY             = 2,
     HTTP2_RET_SENT              = 1,
