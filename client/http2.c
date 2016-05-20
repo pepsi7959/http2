@@ -716,6 +716,13 @@ int HTTP2_write_header(HTTP2_CONNECTION *conn, HTTP2_BUFFER **header_block, HEAD
         return HTTP2_RET_ERR_MEMORY;
     }
     
+    //TODO: Shold be use realloc instead of malloc
+    if(*header_block == NULL){
+        *header_block           = malloc(sizeof(HTTP2_BUFFER)+sizeof(1024));
+        (*header_block)->size   = 1024;
+        (*header_block)->len    = 0;
+    }
+    
     buffer = *header_block;
 
     if( isMatch == 1){
