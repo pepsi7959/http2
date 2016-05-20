@@ -124,6 +124,7 @@ typedef struct _host_t{
     int                     sent_count;
     int                     recv_count;
     int                     error_count;
+    int                     send_msg_queue_count;
     HTTP2_CONNECTION        *ready_queue;
     HTTP2_CONNECTION        *wait_queue;
     HTTP2_CONNECTION        *connection_pool[HTTP2_MAX_CONNECTION];
