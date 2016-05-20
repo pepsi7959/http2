@@ -86,7 +86,7 @@ int GRPC_gen_entry(Pb__Entry **entry,char *dn, char *objectclass, char *attr[128
 
 int GRPC_gen_delete_request(GRPC_BUFFER **buffer, char *base_dn, int flags, char *error){
     if(*buffer == NULL){
-        *buffer         = malloc(sizeof(GRPC_BUFFER)+sizeof(1024));
+        *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*1024);
         (*buffer)->size    = 1024;
         (*buffer)->len     = 0;
     }
@@ -132,7 +132,7 @@ int GRPC_gen_delete_request(GRPC_BUFFER **buffer, char *base_dn, int flags, char
 
 int GRPC_gen_add_request(GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *entry, int flags, char *error){
     if(*buffer == NULL){
-        *buffer         = malloc(sizeof(GRPC_BUFFER)+sizeof(1024));
+        *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*1024);
         (*buffer)->size    = 1024;
         (*buffer)->len     = 0;
     }
@@ -172,7 +172,7 @@ int GRPC_gen_add_request(GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *e
 
 int GRPC_gen_modity_request(GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *entry, int flags, char *error){
     if(*buffer == NULL){
-        *buffer         = malloc(sizeof(GRPC_BUFFER)+sizeof(1024));
+        *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*1024);
         (*buffer)->size    = 1024;
         (*buffer)->len     = 0;
     }
@@ -212,7 +212,7 @@ int GRPC_gen_modity_request(GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry
 
 int GRPC_gen_search_request(GRPC_BUFFER **buffer, const char *base_dn, const char *scope, const char *filter, const char **attrs, int flags, char *error){
     if(*buffer == NULL){
-        *buffer         = malloc(sizeof(GRPC_BUFFER)+sizeof(1024));
+        *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*1024);
         (*buffer)->size    = 1024;
         (*buffer)->len     = 0;
     }
