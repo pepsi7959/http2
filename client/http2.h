@@ -2,6 +2,7 @@
  #define HTTP2_H
  #include "common.h"
  #include "hpack.h"
+ #include "frame.h"
 
 #define HTTP2_MAX_STRING_HOST                   128
 #define HTTP2_MAX_CONNECTION                    4096
@@ -98,6 +99,8 @@ typedef struct _connection_t{
     
     DYNAMIC_TABLE           *enc;
     DYNAMIC_TABLE           *dec;
+    
+    HTTP2_FRAME_FORMAT      *frame_recv;
 }HTTP2_CONNECTION;
 
 typedef struct _host_t{
@@ -145,6 +148,7 @@ int HTTP2_decode(HTTP2_CONNECTION *conn, char *error);
 int HTTP2_encode(HTTP2_CONNECTION *conn, char *error);
 int HTTP2_write_header(HTTP2_CONNECTION *conn, HTTP2_BUFFER **header_block, HEADER_FIELD *hf, char *error);
 
+int HTTP2_insert_length(unsigned int len, int nlen, unsigned char *data);
 int HTTP2_send_message(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, HTTP2_BUFFER *header_block, HTTP2_BUFFER *data, char *error);
 int HTTP2_stream_open(int streamID);
 int HTTP2_stream_close(int streamID);

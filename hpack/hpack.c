@@ -241,11 +241,13 @@ int dynamic_table_search(DYNAMIC_TABLE *dynamic, char *name, char *value, int se
 	return idx;
 }
 
-static HEADER_FIELD * header_allocate(){
+HEADER_FIELD * header_allocate(){
     HEADER_FIELD *hf = malloc(1 * sizeof(HEADER_FIELD));
     hf->index       = 0;
     hf->name[0]     = 0;
     hf->value[0]    = 0;
+    hf->next        = NULL;
+    hf->prev        = NULL;
     return  hf;
 }
 

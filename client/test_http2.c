@@ -709,7 +709,7 @@ int test_HTTP2_send_message(){
     ASSERT( memcmp(hb->data, header_frame, hb->len) == 0);
     
     //ASSERT( GRPC_gen_search_request(&data,"systemId=ocf,subdata=profile,ds=slf,subdata=services,systemId=ocf,subdata=profile,ds=slf,subdata=services,uid=000000000000001,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
-    ASSERT( GRPC_gen_search_request(&data,"uid=000000000000001,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
+    ASSERT( GRPC_gen_search_request(&data,"subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,ds=gup,subdata=services,UID=000000000000002,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
     HTTP2_send_message(hc, conn, hb, data, error);
 
     if( HTTP2_read(conn, error)  != HTTP2_RET_OK ) printf("read : %s\n",error);
@@ -737,7 +737,7 @@ int test_HTTP2_send_message(){
         //Search
 
         data->len = 0;
-        ASSERT( GRPC_gen_search_request(&data,"uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
+        ASSERT( GRPC_gen_search_request(&data,"subdata=profile,ds=gup,subdata=services,UID=000000000000002,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
         HTTP2_send_message(hc, conn, hb, data, error);
         HTTP2_write(conn , error);
         
@@ -768,14 +768,28 @@ int test_HTTP2_send_message(){
     return TEST_RESULT_SUCCESSED;
 }
 
+int test_HTTP2_insert_length(){
+    unsigned char data[12];
+    ASSERT( HTTP2_insert_length(0xf8, 4, data) != 4);
+    ASSERT(data[0] == 0);
+    ASSERT(data[1] == 0);
+    ASSERT(data[2] == 0);
+    ASSERT(data[3] == 0xf8);
+    ASSERT( HTTP2_insert_length(0x1ff, 2, data) == 1);
+    ASSERT(data[0] == 1);
+    ASSERT(data[1] == 0xff);
+    return TEST_RESULT_SUCCESSED;
+}
+
 void test_all(){
-	UNIT_TEST(test_HTTP2_open());
+	//UNIT_TEST(test_HTTP2_open());
     //UNIT_TEST(test_HTTP2_write());
     //UNIT_TEST(test_HTTP2_decode());
     //UNIT_TEST(test_grpc());
     //UNIT_TEST(test_HTTP2_write_header());
     UNIT_TEST(test_HTTP2_send_message());
-   // WAIT();
+    UNIT_TEST(test_HTTP2_insert_length());
+    //WAIT();
 }
 
 int main(){
