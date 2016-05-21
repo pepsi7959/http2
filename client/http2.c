@@ -644,7 +644,7 @@ int HTTP2_decode(HTTP2_CONNECTION *conn, char *error){
     }
     
     if( conn->r_buffer == NULL || (conn->r_buffer->len < MINIMUM_FRAME_SIZE) ){
-        return HTTP2_RET_OK;
+        return HTTP2_RETURN_NEED_MORE_DATA;
     }
     
     ret = HTTP2_frame_decode(conn->r_buffer, &(conn->frame_recv), error);
@@ -656,11 +656,13 @@ int HTTP2_decode(HTTP2_CONNECTION *conn, char *error){
     if( ret != HTTP2_RETURN_NO_ERROR){
         return HTTP2_RET_ERR_DECODE;
     }
+    
+
     printf("[%d], ", conn->frame_recv->streamID);
     switch( conn->frame_recv->type ){
         case HTTP2_FRAME_DATA:
             printf("Obtained HTTP2_FRAME_DATA Frame\n");
-            ret = HTTP2_RET_OK;
+            ret = HTTPP_RET_DATA_AVAILABLE;
             break;
         case HTTP2_FRAME_HEADES:
             printf("Obtained HTTP2_FRAME_HEADES Frame\n");
