@@ -11,6 +11,8 @@ enum GRPC_RETURN_CODE{
     GRPC_RET_INVALID_LENGTH = -2,
     GRPC_RET_UNIMPLEMENT    = -3,
     GRPC_RET_ERR_MEMORY     = -4,
+    GRPC_RET_INVALID_PARAMETER = -5,
+    GRPC_RET_ERR_UNPACK     = -6,
 };
 
 int GRPC_send_request(GRPC_BUFFER *buffer);
@@ -24,6 +26,8 @@ int GRPC_gen_delete_request(unsigned int tid, GRPC_BUFFER **buffer, char *base_d
 int GRPC_gen_add_request(unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *entry, int flags, char *error);
 int GRPC_gen_modity_request(unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *entry, int flags, char *error);
 int GRPC_gen_search_request(unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, const char *scope, const char *filter, const char **attrs, int flags, char *error);
+
+int GRPC_get_reqsponse(unsigned int *tid, GRPC_BUFFER **json_response , GRPC_BUFFER *data, char *error);
 
 int GRPC_gen_resolve();
 int GRPC_gen_register();
