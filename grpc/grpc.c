@@ -84,7 +84,7 @@ int GRPC_gen_entry(Pb__Entry **entry,char *dn, char *objectclass, char *attr[128
     return GRPC_RET_OK;
 }
 
-int GRPC_gen_delete_request(GRPC_BUFFER **buffer, char *base_dn, int flags, char *error){
+int GRPC_gen_delete_request(unsigned int tid, GRPC_BUFFER **buffer, char *base_dn, int flags, char *error){
     if(*buffer == NULL){
         *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*1024);
         (*buffer)->size    = 1024;
@@ -97,7 +97,7 @@ int GRPC_gen_delete_request(GRPC_BUFFER **buffer, char *base_dn, int flags, char
     pb__request__init(&req);
     
     req.has_id             = 1;
-    req.id                 = 14258489482789717250llu;
+    req.id                 = tid;
     req.basedn             = NULL;
     req.filter             = NULL;
     req.dn                 = (char *)base_dn;
@@ -130,7 +130,7 @@ int GRPC_gen_delete_request(GRPC_BUFFER **buffer, char *base_dn, int flags, char
     return GRPC_RET_OK;
 }
 
-int GRPC_gen_add_request(GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *entry, int flags, char *error){
+int GRPC_gen_add_request(unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *entry, int flags, char *error){
     if(*buffer == NULL){
         *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*1024);
         (*buffer)->size    = 1024;
@@ -144,7 +144,7 @@ int GRPC_gen_add_request(GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *e
     pb__request__init(req);
     
     req->has_id             = 1;
-    req->id                 = 14258489482789717250llu;
+    req->id                 = tid;
     req->basedn             = NULL;
     req->dn                 = NULL;
     req->filter             = "(objectClass=*)";
@@ -170,7 +170,7 @@ int GRPC_gen_add_request(GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *e
     return GRPC_RET_OK;
 }
 
-int GRPC_gen_modity_request(GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *entry, int flags, char *error){
+int GRPC_gen_modity_request(unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *entry, int flags, char *error){
     if(*buffer == NULL){
         *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*1024);
         (*buffer)->size    = 1024;
@@ -184,7 +184,7 @@ int GRPC_gen_modity_request(GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry
     pb__request__init(req);
     
     req->has_id             = 1;
-    req->id                 = 14258489482789717250llu;
+    req->id                 = tid;
     req->basedn             = NULL;
     req->dn                 = NULL;
     req->filter             = "(objectClass=*)";
@@ -210,7 +210,7 @@ int GRPC_gen_modity_request(GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry
     return GRPC_RET_OK;
 }
 
-int GRPC_gen_search_request(GRPC_BUFFER **buffer, const char *base_dn, const char *scope, const char *filter, const char **attrs, int flags, char *error){
+int GRPC_gen_search_request(unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, const char *scope, const char *filter, const char **attrs, int flags, char *error){
     if(*buffer == NULL){
         *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*1024);
         (*buffer)->size    = 1024;
@@ -224,7 +224,7 @@ int GRPC_gen_search_request(GRPC_BUFFER **buffer, const char *base_dn, const cha
     pb__request__init(req);
     
     req->has_id             = 1;
-    req->id                 = 14258489482789717250llu;
+    req->id                 = tid;
     req->basedn             = (char *)base_dn;
     req->filter             = (char *)filter;
     req->dn                 = BASE_DN;

@@ -235,12 +235,12 @@ int test_GRPC_gen_search_request(){
     buffer->data[0]         = 0;
     error[0]                = 0;
     
-    ASSERT( GRPC_gen_search_request(&buffer, "uid=000000000000000,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK );
+    ASSERT( GRPC_gen_search_request(0x01, &buffer, "uid=000000000000000,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK );
     ASSERT( buffer->len >= 0);
 
     decode_req  = pb__request__unpack(NULL, buffer->len, (void*)buffer->data);
     ASSERT(decode_req != NULL);
-    ASSERT(decode_req->id == 14258489482789717250llu);
+    ASSERT(decode_req->id == 0x01);
     ASSERT(decode_req->scope == PB__SEARCH_SCOPE__BaseObject);
     ASSERT(strcmp(decode_req->dn, "dc=C-NTDB") == 0);
     ASSERT(strcmp(decode_req->basedn, "uid=000000000000000,ds=SUBSCRIBER,o=AIS,dc=C-NTDB") == 0);
