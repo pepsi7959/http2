@@ -709,12 +709,17 @@ int test_HTTP2_send_message(){
     ASSERT( memcmp(hb->data, header_frame, hb->len) == 0);
     
     //ASSERT( GRPC_gen_search_request(0x01, &data,"systemId=ocf,subdata=profile,ds=slf,subdata=services,systemId=ocf,subdata=profile,ds=slf,subdata=services,uid=000000000000001,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
-    ASSERT( GRPC_gen_search_request(0x01, &data,"subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,ds=gup,subdata=services,UID=000000000000002,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
+    ASSERT( GRPC_gen_search_request(0x0188, &data,"subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,ds=gup,subdata=services,UID=000000000000002,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
     HTTP2_send_message(hc, conn, hb, data, error);
 
     if( HTTP2_read(conn, error)  != HTTP2_RET_OK ) printf("read : %s\n",error);
     if ( HTTP2_decode(conn, error) != HTTP2_RET_OK ) printf("decode : %s\n",error);
-        
+    
+    unsigned int tid = 0;
+    HTTP2_BUFFER *buffer = NULL;
+    if( conn->frame_recv->type == HTTP2_FRAME_DATA){
+        ASSERT( GRPC_get_reqsponse(&tid, &buffer, conn->frame_recv->data_playload->data, error) == GRPC_RET_OK);
+    }
     ASSERT( HTTP2_write(conn , error) == HTTP2_RET_SENT );
     ASSERT( conn->w_buffer->len == 0);
     
@@ -722,8 +727,12 @@ int test_HTTP2_send_message(){
 
     while(1){
         HTTP2_read(conn, error);
-        HTTP2_decode(conn, error);
-        
+        if( HTTP2_decode(conn, error) == HTTPP_RET_DATA_AVAILABLE ){
+            if( conn->frame_recv->type == HTTP2_FRAME_DATA){
+                ASSERT( GRPC_get_reqsponse(&tid, &buffer, conn->frame_recv->data_playload->data, error) == GRPC_RET_OK);
+                DEBUG("data [%s]", buffer->data);
+            }
+        }
         hb->len = 0;
         ASSERT( HTTP2_write_header(conn, &hb, &hf1, error) == HTTP2_RET_OK);
         ASSERT( HTTP2_write_header(conn, &hb, &hf2, error) == HTTP2_RET_OK);

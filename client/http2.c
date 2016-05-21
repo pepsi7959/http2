@@ -662,7 +662,6 @@ int HTTP2_decode(HTTP2_CONNECTION *conn, char *error){
     switch( conn->frame_recv->type ){
         case HTTP2_FRAME_DATA:
             printf("Obtained HTTP2_FRAME_DATA Frame\n");
-            ret = HTTPP_RET_DATA_AVAILABLE;
             break;
         case HTTP2_FRAME_HEADES:
             printf("Obtained HTTP2_FRAME_HEADES Frame\n");
@@ -702,6 +701,7 @@ int HTTP2_decode(HTTP2_CONNECTION *conn, char *error){
             return HTTP2_RET_ERR_DECODE;
     }
     
+    ret = HTTPP_RET_DATA_AVAILABLE;
     
     return ret;
 }
