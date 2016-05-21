@@ -107,7 +107,7 @@ typedef struct _host_t{
     HTTP2_CLNT_ADDR         *list_addr;
     char                    name[HTTP2_MAX_HOST_NAME];
     int                     max_connection;
-    int                     max_concurrent;
+    int                     max_concurrence;
     int                     list_addr_count;
     int                     max_wbuffer;
     int                     keepalive;
@@ -137,7 +137,7 @@ typedef struct _host_t{
 
 extern HTTP2_HOST *HTTP2_HOSTS[];
 
-int HTTP2_host_create(HTTP2_HOST **hc, char *name, char *error);
+int HTTP2_host_create(HTTP2_HOST **hc, char *name, int max_connection, char *error);
 int HTTP2_addr_add(HTTP2_HOST *hc, char *host, int port, int max_connection, char *error);
 int HTTP2_open(HTTP2_HOST *hc, HTTP2_CONNECTION **connect, char *error);      /* Estrabishes connnection to sever */
 int HTTP2_connect(HTTP2_HOST *hc, char *error);                                 /* Initialize HTTP2 PREFACE, setting, and widows updates*/

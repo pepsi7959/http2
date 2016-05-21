@@ -903,7 +903,7 @@ int HTTP2_send_message(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, HTTP2_BUFFER *hea
     
 }
 
-int HTTP2_host_create(HTTP2_HOST **hc, char *name, char *error){
+int HTTP2_host_create(HTTP2_HOST **hc, char *name, int max_connection, char *error){
     HTTP2_HOST *nhc          = NULL;
     if( hc == NULL ){
         if( error != NULL ) sprintf(error, "HTTP2_HOST** is NULL");
@@ -920,10 +920,10 @@ int HTTP2_host_create(HTTP2_HOST **hc, char *name, char *error){
     memset(nhc, 0, sizeof(HTTP2_HOST));
     nhc->ready_queue         = NULL;
     nhc->wait_queue          = NULL;
-    nhc->max_connection      = HTTP2_MAX_CONNECTION;
+    nhc->max_connection      = (max_connection > 0)?max_connection:HTTP2_MAX_CONNECTION;
     nhc->connection_count    = 0;
     nhc->list_addr           = NULL;
-    nhc->max_concurrent      = HTTP2_MAX_CONCURRENCE;
+    nhc->max_concurrence     = HTTP2_MAX_CONCURRENCE;
     nhc->max_wbuffer         = HTTP2_MAX_WRITE_BUFFER_SIZE;
     strcpy(nhc->name, name);
     *hc = nhc;

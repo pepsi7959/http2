@@ -34,10 +34,10 @@ int test_HTTP2_open(){
     HTTP2_HOST *hc          = NULL;
     HTTP2_CONNECTION *conn  = NULL;
     
-    ASSERT( HTTP2_host_create(&hc, "d21", error) == HTTP2_RET_OK );
+    ASSERT( HTTP2_host_create(&hc, "d21", 1, error) == HTTP2_RET_OK );
     ASSERT( hc != NULL );
     ASSERT( strcmp(hc->name, "d21") == 0);
-    ASSERT( hc->max_concurrent == HTTP2_MAX_CONCURRENCE );
+    ASSERT( hc->max_concurrence == HTTP2_MAX_CONCURRENCE );
     
     ASSERT( HTTP2_addr_add(hc, "127.0.0.1", 50051, 10, error) == HTTP2_RET_OK );
     ASSERT( hc->list_addr != NULL );
@@ -79,7 +79,7 @@ int test_HTTP2_write(){
     HTTP2_HOST *hc          = NULL;
     HTTP2_CONNECTION *conn  = NULL;
 
-    ASSERT( HTTP2_host_create(&hc, "d21", error) == HTTP2_RET_OK );
+    ASSERT( HTTP2_host_create(&hc, "d21", 1, error) == HTTP2_RET_OK );
     ASSERT( HTTP2_addr_add(hc, "127.0.0.1", 50051, 10, error) == HTTP2_RET_OK );
 
     if( (r = HTTP2_open(hc, &conn, error)) != HTTP2_RET_OK ){
@@ -218,7 +218,7 @@ int test_HTTP2_decode(){
     HTTP2_HOST *hc          = NULL;
     HTTP2_CONNECTION *conn  = NULL;
 
-    ASSERT( HTTP2_host_create(&hc, "d21", error) == HTTP2_RET_OK );
+    ASSERT( HTTP2_host_create(&hc, "d21", 1, error) == HTTP2_RET_OK );
     ASSERT( HTTP2_addr_add(hc, "127.0.0.1", 50051, 10, error) == HTTP2_RET_OK );
     
     if( (r = HTTP2_open(hc, &conn, error)) != HTTP2_RET_OK ){
@@ -363,7 +363,7 @@ int test_grpc(){
     HTTP2_HOST *hc          = NULL;
     HTTP2_CONNECTION *conn  = NULL;
 
-    ASSERT( HTTP2_host_create(&hc, "d21", error) == HTTP2_RET_OK );
+    ASSERT( HTTP2_host_create(&hc, "d21", 1, error) == HTTP2_RET_OK );
     ASSERT( HTTP2_addr_add(hc, "10.252.169.12", 6051, 10, error) == HTTP2_RET_OK );
     
     if( (r = HTTP2_open(hc, &conn, error)) != HTTP2_RET_OK ){
@@ -476,7 +476,7 @@ int test_HTTP2_write_header(){
     hc->max_connection      = HTTP2_MAX_CONNECTION;
     hc->connection_count    = 0;
     hc->list_addr           = NULL;
-    hc->max_concurrent      = 0;
+    hc->max_concurrence     = 0;
     hc->max_wbuffer         = HTTP2_MAX_WRITE_BUFFER_SIZE;
     hc->ready_queue         = NULL;
     hc->wait_queue          = NULL;
@@ -642,7 +642,7 @@ int test_HTTP2_send_message(){
     hc->max_connection      = HTTP2_MAX_CONNECTION;
     hc->connection_count    = 0;
     hc->list_addr           = NULL;
-    hc->max_concurrent      = 0;
+    hc->max_concurrence     = 0;
     hc->max_wbuffer         = HTTP2_MAX_WRITE_BUFFER_SIZE;
     hc->ready_queue         = NULL;
     hc->wait_queue          = NULL;
