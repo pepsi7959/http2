@@ -132,4 +132,5 @@ int header_static_append(HEADER_FIELD *header, int index, char *value);
 int header_dynamic_append(HEADER_FIELD *header, char *name, char *value);
 int header_encode(int index_type, HEADER_FIELD *hf, unsigned char *enc_buff, char *error);
 int header_decode(DYNAMIC_TABLE *decode, unsigned *enc_buff, int size, HEADER_FIELD **header, char *error);
+HEADER_FIELD * header_allocate();
 #endif
