@@ -154,6 +154,7 @@ int HTTP2_playload_decode(HTTP2_BUFFER *buffer, HTTP2_FRAME_FORMAT *frame, char 
             playload->id                    = 0;
             playload->value                 = 0;
             frame->playload = playload;
+            frame->settings_playload = playload;
         }
             break;
         case HTTP2_FRAME_PUSH_PROMISE:
@@ -171,6 +172,7 @@ int HTTP2_playload_decode(HTTP2_BUFFER *buffer, HTTP2_FRAME_FORMAT *frame, char 
             playload->reserved                  = 0;
             playload->window_size_increment     = 0;
             frame->playload = playload;
+            frame->update_playload = playload;
         }
         break;
         case HTTP2_FRAME_CONTINUATION:
@@ -254,6 +256,7 @@ int HTTP2_frame_decode(HTTP2_BUFFER *buffer, HTTP2_FRAME_FORMAT **frame, char *e
         memmove(buffer->data, buffer->data+(MINIMUM_FRAME_SIZE + nframe->length), buffer->len);
         buffer->cur = 0;
     }else{
+        nframe->playload = NULL;
         buffer->len = buffer->len - buffer->cur;
         memmove(buffer->data, buffer->data+buffer->cur, buffer->len);
         buffer->cur = 0;
