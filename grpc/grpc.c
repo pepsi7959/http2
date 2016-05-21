@@ -35,7 +35,7 @@ int GRPC_gen_entry(Pb__Entry **entry,char *dn, char *objectclass, char *attr[128
         *entry = nentry;
     }
     
-    (*entry)->dn                    = (char *)malloc(strlen(dn));
+    (*entry)->dn                    = (char *)malloc(strlen(dn)+1);
     strcpy((*entry)->dn, dn);
     (*entry)->n_attributes          = attr_len;
     
@@ -263,7 +263,7 @@ int GRPC_get_reqsponse(unsigned int *tid, GRPC_BUFFER **json_response , GRPC_BUF
     
     GRPC_BUFFER *buf        = NULL;
     Pb__Response *response  = NULL;
-    unsigned int blen                = 0;
+    int blen       = 0;
     
     if( data == NULL ){
         if( error != NULL ) sprintf(error, "*data is NULL");
@@ -278,6 +278,8 @@ int GRPC_get_reqsponse(unsigned int *tid, GRPC_BUFFER **json_response , GRPC_BUF
     if( *json_response == NULL ){
         buf = calloc(1, sizeof(GRPC_BUFFER)+sizeof(char)*1024);
         *json_response = buf;
+    }else{
+        buf = *json_response;
     }
     
     response  = pb__response__unpack(NULL, data->len, data->data);
@@ -291,17 +293,17 @@ int GRPC_get_reqsponse(unsigned int *tid, GRPC_BUFFER **json_response , GRPC_BUF
     printf("resultdescription : %s\n", response->resultdescription);
     *tid = response->id;
     
-    blen += sprintf(&(buf->data[blen]), 
+    blen += sprintf(buf->data+blen, 
     "{"
     "{\"resultCode\":\"%lu\","
     "\"resultDescription\":\"%s\","
     "\"matchDn\":\"%s\""
     "}"
     ,response->resultcode
-    ,(response->resultdescription)?response->resultdescription:""
-    ,(response->matcheddn)?response->matcheddn:"");
+    ,(response->resultdescription != NULL)?response->resultdescription:""
+    ,(response->matcheddn != NULL)?response->matcheddn:"");
     
-    blen += sprintf(&(buf->data[blen]), "}");
+    blen += sprintf(buf->data + blen, "}");
     buf->len = blen;
     
     return GRPC_RET_OK;
