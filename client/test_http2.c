@@ -708,8 +708,8 @@ int test_HTTP2_send_message(){
     ASSERT( HTTP2_write_header(conn, &hb, &hf71, error) == HTTP2_RET_OK);
     ASSERT( memcmp(hb->data, header_frame, hb->len) == 0);
     
-    //ASSERT( GRPC_gen_search_request(&data,"systemId=ocf,subdata=profile,ds=slf,subdata=services,systemId=ocf,subdata=profile,ds=slf,subdata=services,uid=000000000000001,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
-    ASSERT( GRPC_gen_search_request(&data,"subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,ds=gup,subdata=services,UID=000000000000002,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
+    //ASSERT( GRPC_gen_search_request(0x01, &data,"systemId=ocf,subdata=profile,ds=slf,subdata=services,systemId=ocf,subdata=profile,ds=slf,subdata=services,uid=000000000000001,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
+    ASSERT( GRPC_gen_search_request(0x01, &data,"subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,subdata=profile,ds=gup,subdata=services,UID=000000000000002,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
     HTTP2_send_message(hc, conn, hb, data, error);
 
     if( HTTP2_read(conn, error)  != HTTP2_RET_OK ) printf("read : %s\n",error);
@@ -737,13 +737,13 @@ int test_HTTP2_send_message(){
         //Search
 
         data->len = 0;
-        ASSERT( GRPC_gen_search_request(&data,"subdata=profile,ds=gup,subdata=services,UID=000000000000002,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
+        ASSERT( GRPC_gen_search_request(0x01, &data,"subdata=profile,ds=gup,subdata=services,UID=000000000000002,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
         HTTP2_send_message(hc, conn, hb, data, error);
         HTTP2_write(conn , error);
         
         //Delete
         data->len = 0;
-        ASSERT( GRPC_gen_delete_request(&data,"uid=000000000000002,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", 0, error) == GRPC_RET_OK);
+        ASSERT( GRPC_gen_delete_request(0x01, &data,"uid=000000000000002,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", 0, error) == GRPC_RET_OK);
         HTTP2_send_message(hc, conn, hb, data, error);
         HTTP2_write(conn , error);
 
@@ -751,12 +751,12 @@ int test_HTTP2_send_message(){
         GRPC_gen_entry(&entry, "uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "subscriber", NULL, 1, error);
         entry->has_method   = 1;
         entry->method       = PB__ENTRY_METHOD__Add;
-        ASSERT( GRPC_gen_add_request(&data,"uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", entry, 0, error) == GRPC_RET_OK);
+        ASSERT( GRPC_gen_add_request(0x01, &data,"uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", entry, 0, error) == GRPC_RET_OK);
         HTTP2_send_message(hc, conn, hb, data, error);
         HTTP2_write(conn , error);
         
         data->len = 0;
-        ASSERT( GRPC_gen_search_request(&data,"uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
+        ASSERT( GRPC_gen_search_request(0x01, &data,"uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
         HTTP2_send_message(hc, conn, hb, data, error);
         HTTP2_write(conn , error);
         
@@ -782,11 +782,11 @@ int test_HTTP2_insert_length(){
 }
 
 void test_all(){
-	//UNIT_TEST(test_HTTP2_open());
-    //UNIT_TEST(test_HTTP2_write());
-    //UNIT_TEST(test_HTTP2_decode());
-    //UNIT_TEST(test_grpc());
-    //UNIT_TEST(test_HTTP2_write_header());
+	UNIT_TEST(test_HTTP2_open());
+    UNIT_TEST(test_HTTP2_write());
+    UNIT_TEST(test_HTTP2_decode());
+    UNIT_TEST(test_grpc());
+    UNIT_TEST(test_HTTP2_write_header());
     UNIT_TEST(test_HTTP2_send_message());
     UNIT_TEST(test_HTTP2_insert_length());
     //WAIT();
