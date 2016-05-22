@@ -257,6 +257,17 @@ int GRPC_gen_search_request(unsigned int tid, GRPC_BUFFER **buffer, const char *
     buff->len = len;
     
     return GRPC_RET_OK;
+
+}
+
+char * GRPC_GetAttributeValues(Pb__Entry *entry, char *find_attr){
+    int i;
+    for(i = 0; i < entry->n_attributes; i++) {
+        if ( strcmp( entry->attributes[i]->name, find_attr) == 0 ){
+			return entry->attributes[i]->values[0];
+		}
+	}
+    return "";
 }
 
 int GRPC_get_reqsponse(unsigned int *tid, GRPC_BUFFER **json_response , GRPC_BUFFER *data, char *error){
@@ -298,9 +309,9 @@ int GRPC_get_reqsponse(unsigned int *tid, GRPC_BUFFER **json_response , GRPC_BUF
         
         Pb__Entry *entry = response->entries[i];
         if( i == 0){
-            blen += sprintf((char *)(buf->data+blen), "\"object[%d]\":[{", i);
+            blen += sprintf((char *)(buf->data+blen), "\"%s\":[{", GRPC_GetAttributeValues(entry, "objectClass"));
         }else{
-            blen += sprintf((char *)(buf->data+blen), ",\"object[%d]\":[{", i);
+            blen += sprintf((char *)(buf->data+blen), ",\"%s\":[{", GRPC_GetAttributeValues(entry, "objectClass"));
         }
         
         blen += sprintf((char *)(buf->data+blen), "\"dn\":\"%s\"", entry->dn);
@@ -384,9 +395,9 @@ int GRPC_get_ldap_reqsponse(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *
         
         Pb__Entry *entry = response->entries[i];
         if( i == 0){
-            blen += sprintf((char *)(buf->data+blen), "\"object[%d]\":[{", i);
+            blen += sprintf((char *)(buf->data+blen), "\"%s\":[{", GRPC_GetAttributeValues(entry, "objectClass"));
         }else{
-            blen += sprintf((char *)(buf->data+blen), ",\"object[%d]\":[{", i);
+            blen += sprintf((char *)(buf->data+blen), ",\"%s\":[{", GRPC_GetAttributeValues(entry, "objectClass"));
         }
         
         blen += sprintf((char *)(buf->data+blen), "\"dn\":\"%s\"", entry->dn);
@@ -422,5 +433,3 @@ int GRPC_get_ldap_reqsponse(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *
 int GRPC_gen_resolve();
 
 int GRPC_gen_register();
-
-
