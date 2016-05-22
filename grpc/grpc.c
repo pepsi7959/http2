@@ -263,7 +263,7 @@ int GRPC_get_reqsponse(unsigned int *tid, GRPC_BUFFER **json_response , GRPC_BUF
     
     GRPC_BUFFER *buf        = NULL;
     Pb__Response *response  = NULL;
-    int blen       = 0;
+    int blen                = 0;
     
     if( data == NULL ){
         if( error != NULL ) sprintf(error, "*data is NULL");
@@ -276,7 +276,7 @@ int GRPC_get_reqsponse(unsigned int *tid, GRPC_BUFFER **json_response , GRPC_BUF
     }
     
     if( *json_response == NULL ){
-        buf = (GRPC_BUFFER*)malloc(sizeof(GRPC_BUFFER)+sizeof(char)*data->len);
+        buf = (GRPC_BUFFER*)malloc(sizeof(GRPC_BUFFER)+sizeof(char)*2*data->len);
         *json_response = buf;
     }else{
         buf = *json_response;
@@ -291,28 +291,21 @@ int GRPC_get_reqsponse(unsigned int *tid, GRPC_BUFFER **json_response , GRPC_BUF
     
     *tid = response->id;
     
-    blen += sprintf((char *)(buf->data+blen), 
-    "{\"resultCode\":\"%u\","
-    "\"resultDescription\":\"%s\","
-    "\"matchDn\":\"%s\""
-    ,response->resultcode
-    ,(response->resultdescription != NULL)?response->resultdescription:""
-    ,(response->matcheddn != NULL)?response->matcheddn:"");
-
+    blen += sprintf((char *)(buf->data+blen),"{");
     int i,j,k;
-
     for( i = 0 ; i < response->n_entries ; i++){
-
-        Pb__Entry *entry = response->entries[i];
-        blen += sprintf((char *)(buf->data+blen), ",\"object[%d]\":[{", i);
         
+        Pb__Entry *entry = response->entries[i];
+        if( i == 0){
+            blen += sprintf((char *)(buf->data+blen), "\"object[%d]\":[{", i);
+        }else{
+            blen += sprintf((char *)(buf->data+blen), ",\"object[%d]\":[{", i);
+        }
+        
+        blen += sprintf((char *)(buf->data+blen), "\"dn\":\"%s\"", entry->dn);
         for( j = 0; j < entry->n_attributes; j++ ){
             Pb__EntryAttribute *attr = entry->attributes[j];
-            if( j == 0){
-                blen += sprintf((char *)(buf->data+blen), "\"%s\":", attr->name);
-            }else{
-                blen += sprintf((char *)(buf->data+blen), ",\"%s\":", attr->name);
-            }
+            blen += sprintf((char *)(buf->data+blen), ",\"%s\":", attr->name);
             
             if(attr->n_values > 1){
                 blen += sprintf((char *)(buf->data+blen), "[");
@@ -384,28 +377,21 @@ int GRPC_get_ldap_reqsponse(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *
     buf = (GRPC_BUFFER*)malloc(sizeof(GRPC_BUFFER)+sizeof(char)*data->len);
     result->bstring = buf;
     
-    blen += sprintf((char *)(buf->data+blen), 
-    "{\"resultCode\":\"%u\","
-    "\"resultDescription\":\"%s\","
-    "\"matchDn\":\"%s\""
-    ,response->resultcode
-    ,(response->resultdescription != NULL)?response->resultdescription:""
-    ,(response->matcheddn != NULL)?response->matcheddn:"");
-    
+    blen += sprintf((char *)(buf->data+blen),"{");
     int i,j,k;
-
     for( i = 0 ; i < response->n_entries ; i++){
-
-        Pb__Entry *entry = response->entries[i];
-        blen += sprintf((char *)(buf->data+blen), ",\"object[%d]\":[{", i);
         
+        Pb__Entry *entry = response->entries[i];
+        if( i == 0){
+            blen += sprintf((char *)(buf->data+blen), "\"object[%d]\":[{", i);
+        }else{
+            blen += sprintf((char *)(buf->data+blen), ",\"object[%d]\":[{", i);
+        }
+        
+        blen += sprintf((char *)(buf->data+blen), "\"dn\":\"%s\"", entry->dn);
         for( j = 0; j < entry->n_attributes; j++ ){
             Pb__EntryAttribute *attr = entry->attributes[j];
-            if( j == 0){
-                blen += sprintf((char *)(buf->data+blen), "\"%s\":", attr->name);
-            }else{
-                blen += sprintf((char *)(buf->data+blen), ",\"%s\":", attr->name);
-            }
+            blen += sprintf((char *)(buf->data+blen), ",\"%s\":", attr->name);
             
             if(attr->n_values > 1){
                 blen += sprintf((char *)(buf->data+blen), "[");
@@ -425,6 +411,7 @@ int GRPC_get_ldap_reqsponse(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *
         
         blen += sprintf((char *)(buf->data+blen), "}]");
     }
+    
     blen += sprintf((char *)(buf->data + blen), "}");
     buf->len = blen;
         
