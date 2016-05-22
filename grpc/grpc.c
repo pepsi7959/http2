@@ -282,7 +282,11 @@ int GRPC_get_reqsponse(unsigned int *tid, GRPC_BUFFER **json_response , GRPC_BUF
         buf = *json_response;
     }
     
-    response  = pb__response__unpack(NULL, data->len, data->data);
+    if( data->len < 4){
+        if( error != NULL ) sprintf(error, "The size of data is too small to decode.");
+        return GRPC_RET_INVALID_LENGTH;
+    }
+    response  = pb__response__unpack(NULL, data->len-4, data->data+4);
     
     if( response == NULL ){
         if( error != NULL ) sprintf(error, "pb__response__unpack return error");
@@ -333,7 +337,12 @@ int GRPC_get_ldap_reqsponse(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *
     
     result->bstring = NULL;
     
-    response  = pb__response__unpack(NULL, data->len, data->data);
+    if( data->len < 4){
+        if( error != NULL ) sprintf(error, "The size of data is too small to decode.");
+        return GRPC_RET_INVALID_LENGTH;
+    }
+    
+    response  = pb__response__unpack(NULL, data->len-4, data->data+4);
     
     if( response == NULL ){
         if( error != NULL ) sprintf(error, "pb__response__unpack return error");
