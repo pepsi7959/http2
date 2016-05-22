@@ -15,6 +15,16 @@ enum GRPC_RETURN_CODE{
     GRPC_RET_ERR_UNPACK     = -6,
 };
 
+struct ldap_result_t{
+    unsigned int        tid;
+    GRPC_BUFFER         *bstring;
+    int                 result_code;
+    char                matchedDN[4096];
+    char                diagnosticMessage[1024];
+};
+
+typedef struct ldap_result_t LDAP_RESULT;
+
 int GRPC_send_request(GRPC_BUFFER *buffer);
 int GRPC_send_resolve(GRPC_BUFFER *buffer);
 int GRPC_send_register(GRPC_BUFFER *buffer);
@@ -28,6 +38,7 @@ int GRPC_gen_modity_request(unsigned int tid, GRPC_BUFFER **buffer, const char *
 int GRPC_gen_search_request(unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, const char *scope, const char *filter, const char **attrs, int flags, char *error);
 
 int GRPC_get_reqsponse(unsigned int *tid, GRPC_BUFFER **json_response , GRPC_BUFFER *data, char *error);
+int GRPC_get_ldap_reqsponse(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *error);
 
 int GRPC_gen_resolve();
 int GRPC_gen_register();

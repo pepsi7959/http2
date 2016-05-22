@@ -291,11 +291,11 @@ int GRPC_get_reqsponse(unsigned int *tid, GRPC_BUFFER **json_response , GRPC_BUF
     
     printf("response : %lu\n", response->id);
     printf("resultdescription : %s\n", response->resultdescription);
-    *tid = response->id;
+    *tid = (response->has_id)?response->id:-1;
     
-    blen += sprintf(buf->data+blen, 
+    blen += sprintf((char *)(buf->data+blen), 
     "{"
-    "{\"resultCode\":\"%lu\","
+    "{\"resultCode\":\"%u\","
     "\"resultDescription\":\"%s\","
     "\"matchDn\":\"%s\""
     "}"
@@ -303,8 +303,54 @@ int GRPC_get_reqsponse(unsigned int *tid, GRPC_BUFFER **json_response , GRPC_BUF
     ,(response->resultdescription != NULL)?response->resultdescription:""
     ,(response->matcheddn != NULL)?response->matcheddn:"");
     
-    blen += sprintf(buf->data + blen, "}");
+    blen += sprintf((char *)(buf->data + blen), "}");
     buf->len = blen;
+    
+    return GRPC_RET_OK;
+}
+
+int GRPC_get_ldap_reqsponse(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *error){
+        
+    LDAP_RESULT *result     = NULL;
+    Pb__Response *response  = NULL;
+
+    if( data == NULL ){
+        if( error != NULL ) sprintf(error, "*data is NULL");
+        return GRPC_RET_INVALID_PARAMETER;
+    }
+    
+    if( ldap_result == NULL ){
+        if( error != NULL ) sprintf(error, "**json_response is NULL");
+        return GRPC_RET_INVALID_PARAMETER;
+    }
+    
+    if( *ldap_result == NULL ){
+        result = calloc(1, sizeof(LDAP_RESULT));
+        *ldap_result = result;
+    }else{
+        result = *ldap_result;
+    }
+    
+    result->bstring = NULL;
+    
+    response  = pb__response__unpack(NULL, data->len, data->data);
+    
+    if( response == NULL ){
+        if( error != NULL ) sprintf(error, "pb__response__unpack return error");
+        return GRPC_RET_ERR_UNPACK;
+    }
+
+    result->tid = (response->has_id)?response->id:-1;
+    result->result_code = (response->has_resultcode)?response->resultcode:0;
+    
+    if(response->matcheddn != NULL){
+        strcpy(result->matchedDN, response->matcheddn);
+    }
+    
+    if(response->resultdescription != NULL){
+         strcpy(result->diagnosticMessage, response->resultdescription);
+    }
+    
     
     return GRPC_RET_OK;
 }
