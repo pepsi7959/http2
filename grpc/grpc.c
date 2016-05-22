@@ -276,6 +276,7 @@ int GRPC_get_reqsponse(unsigned int *tid, GRPC_BUFFER **json_response , GRPC_BUF
     }
     
     if( *json_response == NULL ){
+        //TODO: optimize allocation
         buf = (GRPC_BUFFER*)malloc(sizeof(GRPC_BUFFER)+sizeof(char)*2*data->len);
         *json_response = buf;
     }else{
@@ -374,7 +375,7 @@ int GRPC_get_ldap_reqsponse(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *
          strcpy(result->diagnosticMessage, response->resultdescription);
     }
 
-    buf = (GRPC_BUFFER*)malloc(sizeof(GRPC_BUFFER)+sizeof(char)*data->len);
+    buf = (GRPC_BUFFER*)malloc(sizeof(GRPC_BUFFER)+sizeof(char)*2*data->len);
     result->bstring = buf;
     
     blen += sprintf((char *)(buf->data+blen),"{");
