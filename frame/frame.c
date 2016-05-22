@@ -100,6 +100,7 @@ int HTTP2_playload_decode(HTTP2_BUFFER *buffer, HTTP2_FRAME_FORMAT *frame, char 
             HTTP2_BUFFER *data              = NULL;
             data                            = (HTTP2_BUFFER *)malloc( sizeof(HTTP2_BUFFER) +  len );
             data->len                       = len;
+            data->cur                       = 4;
             
             buffer->cur                     += 1 ; //skip padding length
             memcpy(data->data, buffer->data + buffer->cur, len);
