@@ -60,6 +60,19 @@ int GRPC_gen_entry(Pb__Entry **entry,char *dn, char *objectclass, char *attr[128
         is_attrs_set = attr_len;
     }
     
+    int i = 0;
+    for( i = 0; i < attr_len; i++){
+        attrs[i] = (Pb__EntryAttribute*)malloc(sizeof(Pb__EntryAttribute));
+        pb__entry_attribute__init(attrs[i]);
+        attrs[i]->name      = malloc(sizeof(char)*256);
+        strcpy(attrs[i]->name, "objectClass");
+        
+        attrs[i]->n_values  = 1;
+        attrs[i]->values        = malloc(sizeof(char*)*attrs[0]->n_values);
+        attrs[i]->values[0]     = malloc(sizeof(char)*256);
+        strcpy(attrs[0]->values[0], objectclass);
+    }
+    
     attrs[0] = (Pb__EntryAttribute*)malloc(sizeof(Pb__EntryAttribute));
     pb__entry_attribute__init(attrs[0]);
     attrs[0]->name      = malloc(sizeof(char)*256);
@@ -80,6 +93,78 @@ int GRPC_gen_entry(Pb__Entry **entry,char *dn, char *objectclass, char *attr[128
     strcpy(attrs[1]->values[0],"mala");
     */
     (*entry)->attributes = attrs;
+
+    return GRPC_RET_OK;
+}
+
+int GRPC_gen_entry_ldap(Pb__Entry **entry, char *dn, char *objectclass, ATTRLIST *attr_list, char *error){
+    
+    int attr_len                    = 0;
+    static int is_attrs_set         = 0;
+    static Pb__EntryAttribute *attrs[256];
+    
+    if( *entry == NULL ){
+        printf("create New\n");
+        Pb__Entry *nentry = malloc(sizeof(Pb__Entry));
+        pb__entry__init(nentry);
+        if(nentry == NULL){
+            if( error != NULL ) sprintf(error, "Cannot allocate memory");
+            return GRPC_RET_ERR_MEMORY;
+        }
+        *entry = nentry;
+    }
+    
+    (*entry)->dn                    = (char *)malloc(strlen(dn)+1);
+    strcpy((*entry)->dn, dn);
+
+    
+
+    if( attr_list == NULL ){
+        if (error != NULL) sprintf(error, "ATTRLIST* is NULL");
+        return GRPC_RET_INVALID_PARAMETER;
+    }
+    
+    ATTRLIST *t_attrs = attr_list;
+    
+    while( t_attrs ){
+        
+        if( is_attrs_set <= attr_len){
+            attrs[attr_len] = (Pb__EntryAttribute*)malloc(sizeof(Pb__EntryAttribute));
+            pb__entry_attribute__init(attrs[attr_len]);
+            attrs[attr_len]->name  = malloc(sizeof(char) * MAX_ATTR_NAME_SIZE);
+            is_attrs_set++;
+        }
+
+
+        strcpy(attrs[attr_len]->name, t_attrs->name);
+        
+        //TODO:
+        attrs[attr_len]->values     = malloc(sizeof(char*) * MAX_ATTRIBUTE_VALUES);
+        
+        VALLIST *t_vals = t_attrs->vals;
+        int vals = 0;
+        while( t_vals ){
+            
+            attrs[attr_len]->values[vals] = malloc(sizeof(char) * MAX_ATTR_VALUE_SIZE);
+            strcpy(attrs[attr_len]->values[vals], t_vals->value);
+            vals++;
+            
+            t_vals = t_vals->next;
+            if( t_vals == t_attrs->vals){
+                break;
+            }
+        }
+        attrs[attr_len]->n_values   = vals;
+        
+        attr_len++;
+        t_attrs = t_attrs->next;
+        if( t_attrs == attr_list){
+            break;
+        }
+    }
+    
+    (*entry)->n_attributes  = attr_len;
+    (*entry)->attributes    = attrs;
 
     return GRPC_RET_OK;
 }

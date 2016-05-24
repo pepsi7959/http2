@@ -3,6 +3,9 @@
 #include "common.h"
 #include "d21.pb-c.h"
 
+#define MAX_ATTRIBUTE_VALUES        16
+#define MAX_ATTR_NAME_SIZE     256
+#define MAX_ATTR_VALUE_SIZE    256
 typedef struct _buffer_t GRPC_BUFFER;
 
 enum GRPC_RETURN_CODE{
@@ -23,13 +26,34 @@ struct ldap_result_t{
     char                diagnosticMessage[1024];
 };
 
+struct _value_list_t
+{
+    struct _value_list_t    *prev;
+    struct _value_list_t    *next;
+    int                     len;
+    char                    value[MAX_ATTR_VALUE_SIZE];
+} ;
+typedef struct _value_list_t VALLIST;
+
+struct _attr_list_t
+{
+    struct _attr_list_t *prev;
+    struct _attr_list_t *next;
+    int                 len;
+    char                name[MAX_ATTR_NAME_SIZE];
+    VALLIST         *vals;
+};
+
 typedef struct ldap_result_t LDAP_RESULT;
+typedef struct _attr_list_t ATTRLIST;
 
 int GRPC_send_request(GRPC_BUFFER *buffer);
 int GRPC_send_resolve(GRPC_BUFFER *buffer);
 int GRPC_send_register(GRPC_BUFFER *buffer);
 
 int GRPC_gen_entry(Pb__Entry **entry,char *dn, char *objectclass, char *attr[128], int attr_len, char *error);
+int GRPC_gen_entry_ldap(Pb__Entry **entry, char *dn, char *objectclass, ATTRLIST *attrs, char *error);
+
 int GRPC_gen_modify_entry(Pb__Entry **entry,char *dn, char *attr[128], int attr_len, char *error);
 
 int GRPC_gen_delete_request(unsigned int tid, GRPC_BUFFER **buffer, char *base_dn, int flags, char *error);

@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include "linkedlist.h"
 #include "testcase.h"
 #include "helloworld.pb-c.h"
 #include "d21.pb-c.h"
@@ -346,6 +346,31 @@ int test_GRPC_get_ldap_reqsponse(){
     return TEST_RESULT_SUCCESSED;
 }
 
+int test_GRPC_gen_entry_ldap(){
+    char error[1024];
+    Pb__Entry *entry = NULL;
+    ATTRLIST *attr_list = calloc(1, sizeof(ATTRLIST));
+    attr_list->next = NULL;
+    attr_list->prev = NULL;
+    strcpy( attr_list->name, "objectClass");
+    VALLIST *val = calloc(1, sizeof(VALLIST));
+    strcpy( val->value, "subscriber" );
+    LINKEDLIST_APPEND( attr_list->vals, val);
+    
+    val = calloc(1, sizeof(VALLIST));
+    strcpy( val->value, "subscriber1" );
+    LINKEDLIST_APPEND( attr_list->vals, val);
+    
+    //LINKEDLIST_APPEND( attr_list, attr_list);
+    ASSERT( GRPC_gen_entry_ldap(&entry, "uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "objectClass", attr_list, error) == GRPC_RET_OK );
+    ASSERT( entry->n_attributes == 1);
+    ASSERT( strcmp( entry->attributes[0]->name, "objectClass") == 0 );
+    ASSERT( entry->attributes[0]->n_values == 2 );
+    ASSERT( strcmp( entry->attributes[0]->values[0], "subscriber") == 0 );
+    ASSERT( strcmp( entry->attributes[0]->values[1], "subscriber1") == 0 );
+    return TEST_RESULT_SUCCESSED;
+}
+
 void test_all(){
     UNIT_TEST(test_helloworld());
     UNIT_TEST(test_Pb__Request());
@@ -355,6 +380,7 @@ void test_all(){
     UNIT_TEST(test_GRPC_gen_entry());
     UNIT_TEST(test_GRPC_get_reqsponse());
     UNIT_TEST(test_GRPC_get_ldap_reqsponse());
+    UNIT_TEST(test_GRPC_gen_entry_ldap());
 }
 
 int main(){
