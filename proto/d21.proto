@@ -4,7 +4,7 @@ syntax = "proto3";
 
 package pb;
 
-/*import "github.com/gogo/protobuf/gogoproto/gogo.proto";*/
+//import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
 //option (gogoproto.marshaler_all)       = true;
 /* option (gogoproto.sizer_all)           = true; */
@@ -14,8 +14,8 @@ package pb;
 // The Add service definition.
 //service D21 {
   // Do processes the message
-  //rpc Do (Request) returns (Response);
-  //rpc ResolveAlias (Request) returns (Response);
+//  rpc Do (Request) returns (Response);
+//  rpc ResolveAlias (Request) returns (Response);
 //}
 
 // LDAP Search scope
@@ -61,7 +61,7 @@ message Request {
 message Entry {
     /* option (gogoproto.goproto_getters) = true; */
     /* option (gogoproto.face)            = false; */
-    EntryMethod method                 = 1;
+    EntryMethod Method                 = 1;
     string Dn                          = 2;
     repeated EntryAttribute Attributes = 3;
 }
@@ -80,10 +80,13 @@ message Response {
     /* option (gogoproto.face)            = false; */
     uint64 ID                          = 1;
     uint32 ResultCode                  = 2;
-    string MatchedDn                   = 3;
-    string ResultDescription           = 4;
-    repeated Entry Entries             = 5;
-    repeated string Referrals          = 6;
+    uint64 RaftIndex                   = 3;
+    uint64 RaftTerm                    = 4;
+    uint64 ClusterID                   = 5;
+    string MatchedDn                   = 6;
+    string ResultDescription           = 7;
+    repeated Entry Entries             = 8;
+    repeated string Referrals          = 9;
 }
 
 // Meta data is used to return meta data to response
