@@ -216,18 +216,11 @@ int GRPC_gen_delete_request(unsigned int tid, GRPC_BUFFER **buffer, char *base_d
 }
 
 int GRPC_gen_add_request(unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *entry, int flags, char *error){
-    if(*buffer == NULL){
-        *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*1024);
-        (*buffer)->size    = 1024;
-        (*buffer)->len     = 0;
-    }
-    
+   
     //Generate Request
     Pb__Request *req        = calloc(1,sizeof(Pb__Request));
     int len                 = 0;
-    GRPC_BUFFER *buff       = *buffer;
     pb__request__init(req);
-    
     req->has_id             = 1;
     req->id                 = tid;
     req->basedn             = NULL;
@@ -240,17 +233,24 @@ int GRPC_gen_add_request(unsigned int tid, GRPC_BUFFER **buffer, const char *bas
     req->entry              = entry;
     
     len = pb__request__get_packed_size(req);
-    if( len > buff->size - buff->len ){
+    
+    if(*buffer == NULL){
+        *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*len);
+        (*buffer)->size    = len;
+        (*buffer)->len     = 0;
+    }
+    
+    if( len > (*buffer)->size - (*buffer)->len ){
         //reallocate buffer
         if( error != NULL ) sprintf(error, "Insufficient buffer!!");
         return GRPC_RET_UNIMPLEMENT;
     }
     
-    if( pb__request__pack(req, buff->data) != len ){
+    if( pb__request__pack(req, (*buffer)->data) != len ){
         if( error != NULL ) sprintf(error, "pb__request__pack return invalid length");
         return GRPC_RET_INVALID_LENGTH;
     }
-    buff->len = len;
+    (*buffer)->len = len;
     
     return GRPC_RET_OK;
 }
