@@ -816,9 +816,9 @@ int HTTP2_write_header(HTTP2_CONNECTION *conn, HTTP2_BUFFER **header_block, HEAD
 int HTTP2_insert_length(unsigned int len, int nlen, unsigned char *data){
     int i = 0;
     for (; i < nlen-1; i++){
-        data[i] = (len >> 8*(nlen-1-i)) && 0xff;
+        data[i] = (unsigned char)((len >> 8*(nlen-1-i)));
     }
-    data[i] = (len & 0xff);
+    data[i] = (unsigned char)(len);
     
     return HTTP2_RET_OK;
 }
