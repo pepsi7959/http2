@@ -761,12 +761,40 @@ int test_HTTP2_send_message(){
         HTTP2_write(conn , error);
 
         data->len   = 0;
-        GRPC_gen_entry(&entry, "uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "subscriber", NULL, 1, error);
+        //GRPC_gen_entry(&entry, "uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "subscriber", NULL, 1, error);
+        ATTRLIST *attr_list = calloc(1, sizeof(ATTRLIST));
+        attr_list->next = NULL;
+        attr_list->prev = NULL;
+        strcpy( attr_list->name, "objectClass");
+        VALLIST *val = calloc(1, sizeof(VALLIST));
+        strcpy( val->value, "subscriber" );
+        LINKEDLIST_APPEND( attr_list->vals, val);
+        entry = NULL;
+        ASSERT( GRPC_gen_entry_ldap(&entry, "uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "objectClass", attr_list, error) == GRPC_RET_OK );
+        
         entry->has_method   = 1;
         entry->method       = PB__ENTRY_METHOD__Add;
         ASSERT( GRPC_gen_add_request(0x123, &data,"uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", entry, 0, error) == GRPC_RET_OK);
         HTTP2_send_message(hc, conn, hb, data, error);
         HTTP2_write(conn , error);
+        
+        data->len   = 0;
+        //GRPC_gen_entry(&entry, "uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "subscriber", NULL, 1, error);
+        attr_list = calloc(1, sizeof(ATTRLIST));
+        attr_list->next = NULL;
+        attr_list->prev = NULL;
+        strcpy( attr_list->name, "objectClass");
+        val = calloc(1, sizeof(VALLIST));
+        strcpy( val->value, "subscriber" );
+        LINKEDLIST_APPEND( attr_list->vals, val);
+        entry = NULL;
+        ASSERT( GRPC_gen_entry_ldap(&entry, "uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "objectClass", attr_list, error) == GRPC_RET_OK );
+        entry->has_method   = 1;
+        entry->method       = PB__ENTRY_METHOD__Replace;
+        ASSERT( GRPC_gen_add_request(0x123, &data,"uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", entry, 0, error) == GRPC_RET_OK);
+        HTTP2_send_message(hc, conn, hb, data, error);
+        HTTP2_write(conn , error);
+        
         
         data->len = 0;
         ASSERT( GRPC_gen_search_request(0x123, &data,"uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
@@ -781,16 +809,37 @@ int test_HTTP2_send_message(){
     return TEST_RESULT_SUCCESSED;
 }
 
+int test_GRPC_gen_entry_ldap(){
+    char error[1024];
+    Pb__Entry *entry = NULL;
+    ATTRLIST *attr_list = calloc(1, sizeof(ATTRLIST));
+    attr_list->next = NULL;
+    attr_list->prev = NULL;
+    strcpy( attr_list->name, "objectClass");
+    VALLIST *val = calloc(1, sizeof(VALLIST));
+    strcpy( val->value, "subscriber" );
+    LINKEDLIST_APPEND( attr_list->vals, val);
+    //LINKEDLIST_APPEND( attr_list, attr_list);
+    ASSERT( GRPC_gen_entry_ldap(&entry, "uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "objectClass", attr_list, error) != GRPC_RET_OK );
+    return TEST_RESULT_SUCCESSED;
+}
+
 int test_HTTP2_insert_length(){
     unsigned char data[12];
-    ASSERT( HTTP2_insert_length(0xf8, 4, data) != 4);
+    ASSERT( HTTP2_insert_length(0xf8, 4, data) == HTTP2_RET_OK);
     ASSERT(data[0] == 0);
     ASSERT(data[1] == 0);
     ASSERT(data[2] == 0);
     ASSERT(data[3] == 0xf8);
-    ASSERT( HTTP2_insert_length(0x1ff, 2, data) == 1);
+    ASSERT( HTTP2_insert_length(0x1ff, 2, data) == HTTP2_RET_OK);
     ASSERT(data[0] == 1);
     ASSERT(data[1] == 0xff);
+    ASSERT( HTTP2_insert_length(781, 4, data) == HTTP2_RET_OK);
+    HEXDUMP(data, 4);
+    ASSERT(data[0] == 0);
+    ASSERT(data[1] == 0);
+    ASSERT(data[2] == 0x3);
+    ASSERT(data[3] == 0x0d);
     return TEST_RESULT_SUCCESSED;
 }
 
@@ -800,8 +849,9 @@ void test_all(){
     //UNIT_TEST(test_HTTP2_decode());
     //UNIT_TEST(test_grpc());
     //UNIT_TEST(test_HTTP2_write_header());
-    UNIT_TEST(test_HTTP2_send_message());
-    //UNIT_TEST(test_HTTP2_insert_length());
+    //UNIT_TEST(test_HTTP2_send_message());
+    UNIT_TEST(test_HTTP2_insert_length());
+    //UNIT_TEST(test_GRPC_gen_entry_ldap());
     //WAIT();
 }
 
