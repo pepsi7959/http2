@@ -86,7 +86,7 @@ int HTTP2_FRAME_add_playload(HTTP2_FRAME_FORMAT **frame, int type, void *playloa
     return 0;
 }
 
-int HTTP2_playload_decode(HTTP2_BUFFER *buffer, HTTP2_FRAME_FORMAT *frame, char *error){
+int HTTP2_playload_decode(HTTP2_FRAME_BUFFER *buffer, HTTP2_FRAME_FORMAT *frame, char *error){
     switch(frame->type){
         case HTTP2_FRAME_DATA:
         { 
@@ -97,8 +97,8 @@ int HTTP2_playload_decode(HTTP2_BUFFER *buffer, HTTP2_FRAME_FORMAT *frame, char 
             playload->padding_length        = (int)buffer->data[buffer->cur];
              
             int len                         = (frame->length - playload->padding_length) -1 ; //data length
-            HTTP2_BUFFER *data              = NULL;
-            data                            = (HTTP2_BUFFER *)malloc( sizeof(HTTP2_BUFFER) +  len );
+            HTTP2_FRAME_BUFFER *data              = NULL;
+            data                            = (HTTP2_FRAME_BUFFER *)malloc( sizeof(HTTP2_FRAME_BUFFER) +  len );
             data->len                       = len;
             data->cur                       = 4;
             
@@ -112,8 +112,8 @@ int HTTP2_playload_decode(HTTP2_BUFFER *buffer, HTTP2_FRAME_FORMAT *frame, char 
                     sprintf(error, "The padding were set ,but the size of padding was less than zero.");
                     return HTTP2_RETURN_PROTOCOL_ERROR;
                 }
-                HTTP2_BUFFER *padding       = NULL;
-                padding                     = (HTTP2_BUFFER*)malloc( sizeof(HTTP2_BUFFER) +  playload->padding_length);
+                HTTP2_FRAME_BUFFER *padding       = NULL;
+                padding                     = (HTTP2_FRAME_BUFFER*)malloc( sizeof(HTTP2_FRAME_BUFFER) +  playload->padding_length);
                 padding->len                = playload->padding_length;
                 memcpy(padding->data, buffer->data + buffer->cur, playload->padding_length);
                 buffer->cur += playload->padding_length;
@@ -186,7 +186,7 @@ int HTTP2_playload_decode(HTTP2_BUFFER *buffer, HTTP2_FRAME_FORMAT *frame, char 
     return HTTP2_RETURN_NO_ERROR;
 }
 
-int HTTP2_frame_decode(HTTP2_BUFFER *buffer, HTTP2_FRAME_FORMAT **frame, char *error){
+int HTTP2_frame_decode(HTTP2_FRAME_BUFFER *buffer, HTTP2_FRAME_FORMAT **frame, char *error){
     unsigned int tmp_uint       = 0;
     int r                       = 0;
     HTTP2_FRAME_FORMAT *nframe  = NULL;

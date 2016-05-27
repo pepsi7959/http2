@@ -75,8 +75,8 @@ void HEXDUMP(unsigned char *buff, int size){
 }
 
 int test_HTTP2_frame_decode(){
-    HTTP2_BUFFER *buffer = (HTTP2_BUFFER*)malloc(sizeof(HTTP2_BUFFER)+1024);
-    memset(buffer, 0, sizeof(HTTP2_BUFFER) + 1024);
+    HTTP2_FRAME_BUFFER *buffer = (HTTP2_FRAME_BUFFER*)malloc(sizeof(HTTP2_FRAME_BUFFER)+1024);
+    memset(buffer, 0, sizeof(HTTP2_FRAME_BUFFER) + 1024);
     HTTP2_FRAME_FORMAT *frame = NULL;
     char error[1024];
     
@@ -106,7 +106,7 @@ int test_HTTP2_frame_decode(){
     ASSERT( frame->streamID == 0);
     ASSERT( buffer->len == 0);
     
-    memset(buffer, 0, sizeof(HTTP2_BUFFER) + 1024);
+    memset(buffer, 0, sizeof(HTTP2_FRAME_BUFFER) + 1024);
     memcpy(buffer->data,HTTP2_DEFAULT_FRAME_SETTING_ACK, sizeof(HTTP2_DEFAULT_FRAME_SETTING_ACK));
     buffer->len = (int)sizeof(HTTP2_DEFAULT_FRAME_SETTING_ACK);
     ASSERT( HTTP2_frame_decode(buffer, &frame, error) == HTTP2_RETURN_NO_ERROR );
@@ -116,7 +116,7 @@ int test_HTTP2_frame_decode(){
     ASSERT( frame->reserved == 0);
     ASSERT( frame->streamID == 0);
     
-    memset(buffer, 0, sizeof(HTTP2_BUFFER) + 1024);
+    memset(buffer, 0, sizeof(HTTP2_FRAME_BUFFER) + 1024);
     memcpy(buffer->data,HTTP2_DEFAULT_FRAME_WINDOWS, sizeof(HTTP2_DEFAULT_FRAME_WINDOWS));
     buffer->len = (int)sizeof(HTTP2_DEFAULT_FRAME_WINDOWS);
     ASSERT( HTTP2_frame_decode(buffer, &frame, error) == HTTP2_RETURN_NO_ERROR );
@@ -126,7 +126,7 @@ int test_HTTP2_frame_decode(){
     ASSERT( frame->reserved == 1);
     ASSERT( frame->streamID == 0x8010000);
     
-    memset(buffer, 0, sizeof(HTTP2_BUFFER) + 1024);
+    memset(buffer, 0, sizeof(HTTP2_FRAME_BUFFER) + 1024);
     memcpy(buffer->data,HTTP2_DEFAULT_FRAME_DATA, sizeof(HTTP2_DEFAULT_FRAME_DATA));
     buffer->len = (int)sizeof(HTTP2_DEFAULT_FRAME_DATA);
     ASSERT( HTTP2_frame_decode(buffer, &frame, error) == HTTP2_RETURN_NO_ERROR );
@@ -140,7 +140,7 @@ int test_HTTP2_frame_decode(){
     HTTP2_PLAYLOAD_DATA* playload  = (HTTP2_PLAYLOAD_DATA*)frame->playload;
     ASSERT( playload != NULL);
     ASSERT( playload->data != NULL);
-    HTTP2_BUFFER* data = (HTTP2_BUFFER*) playload->data;
+    HTTP2_FRAME_BUFFER* data = (HTTP2_FRAME_BUFFER*) playload->data;
     ASSERT(data == playload->data);
     ASSERT( data->len == (frame->length-1)-playload->padding_length);
     ASSERT( memcmp( data->data, &HTTP2_DEFAULT_FRAME_DATA[9+1], data->len) == 0 ); // 9+1 frame length, padding flag
