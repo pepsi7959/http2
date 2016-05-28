@@ -47,6 +47,11 @@ struct _attr_list_t
 typedef struct ldap_result_t LDAP_RESULT;
 typedef struct _attr_list_t ATTRLIST;
 
+enum GRPC_SERVICE{
+    GRPC_SERVICE_DO = 1,
+    GRCP_RESOLVE_ALIASE ,
+};
+
 int GRPC_send_request(GRPC_BUFFER *buffer);
 int GRPC_send_resolve(GRPC_BUFFER *buffer);
 int GRPC_send_register(GRPC_BUFFER *buffer);
