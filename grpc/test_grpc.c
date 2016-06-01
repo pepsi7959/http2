@@ -140,7 +140,8 @@ int test_Pb__Response(){
     Pb__EntryAttribute *attr_entry[1];
     Pb__Entry          *en[1];
     char *values[2];
-    
+   
+	en[0]					     = calloc(1,sizeof(Pb__Entry)); 
     attr_entry[0]                = malloc(sizeof(Pb__Entry));
     attr_entry[0]->name          = malloc(sizeof(char)*128);
 
@@ -229,13 +230,17 @@ int test_Decode_from_data(){
 int test_GRPC_gen_search_request(){
     char error[1024];
     Pb__Request *decode_req = NULL;
-    GRPC_BUFFER *buffer     = malloc(sizeof(GRPC_BUFFER)*2048);
+    //GRPC_BUFFER *buffer     = malloc(sizeof(GRPC_BUFFER)*2048);
+	GRPC_BUFFER *buffer		= NULL;
+	ALLOCATE_BUFFER(buffer, 2048);
+	ASSERT(buffer!= NULL);
+	ASSERT(buffer->size == 2048);
     buffer->len             = 0;
     buffer->size            = 2048;
     buffer->data[0]         = 0;
     error[0]                = 0;
     
-    ASSERT( GRPC_gen_search_request(0x01, &buffer, "uid=000000000000000,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK );
+    ASSERT( GRPC_gen_search_request(0x01, &buffer, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK );
     ASSERT( buffer->len >= 0);
 
     decode_req  = pb__request__unpack(NULL, buffer->len, (void*)buffer->data);
@@ -243,7 +248,9 @@ int test_GRPC_gen_search_request(){
     ASSERT(decode_req->id == 0x01);
     ASSERT(decode_req->scope == PB__SEARCH_SCOPE__BaseObject);
     ASSERT(strcmp(decode_req->dn, "dc=C-NTDB") == 0);
-    ASSERT(strcmp(decode_req->basedn, "uid=000000000000000,ds=SUBSCRIBER,o=AIS,dc=C-NTDB") == 0);
+    DEBUG("DN: %s", decode_req->basedn);
+    ASSERT(strcmp(decode_req->basedn, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB") == 0);
+    WAIT();
     ASSERT(strcmp(decode_req->filter, "(objectClass=*)") == 0);
     ASSERT(decode_req->recursive == 0);
     ASSERT(decode_req->entry == NULL);
@@ -333,7 +340,8 @@ int test_GRPC_get_ldap_reqsponse(){
     res.referrals       = NULL;
     
     int len = pb__response__get_packed_size(&res);
-    GRPC_BUFFER *data = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*len);
+    GRPC_BUFFER *data = NULL;//malloc(sizeof(GRPC_BUFFER)+sizeof(char)*len);
+    ALLOCATE_BUFFER(data, (sizeof(GRPC_BUFFER)+sizeof(char)*len));
     memset(data, 0, sizeof(GRPC_BUFFER));
     ASSERT( pb__response__pack(&res, data->data) == len );
     data->len = len;
@@ -362,12 +370,63 @@ int test_GRPC_gen_entry_ldap(){
     LINKEDLIST_APPEND( attr_list->vals, val);
     
     //LINKEDLIST_APPEND( attr_list, attr_list);
-    ASSERT( GRPC_gen_entry_ldap(&entry, "uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "objectClass", attr_list, error) == GRPC_RET_OK );
+    ASSERT( GRPC_gen_entry_ldap(&entry, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "objectClass", attr_list, error) == GRPC_RET_OK );
     ASSERT( entry->n_attributes == 1);
+    ASSERT( strcmp(entry->dn, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB") == 0 );
     ASSERT( strcmp( entry->attributes[0]->name, "objectClass") == 0 );
     ASSERT( entry->attributes[0]->n_values == 2 );
     ASSERT( strcmp( entry->attributes[0]->values[0], "subscriber") == 0 );
     ASSERT( strcmp( entry->attributes[0]->values[1], "subscriber1") == 0 );
+    return TEST_RESULT_SUCCESSED;
+}
+
+int test_GRPC_gen_add_request(){
+    char error[1024];
+    Pb__Request *decode_req = NULL;
+    Pb__Entry *entry        = NULL;
+	GRPC_BUFFER *buffer		= NULL;
+	ALLOCATE_BUFFER(buffer, 2048);
+	ASSERT(buffer!= NULL);
+	ASSERT(buffer->size == 2048);
+    buffer->len             = 0;
+    buffer->size            = 2048;
+    buffer->data[0]         = 0;
+    error[0]                = 0;
+    
+    
+    //Gen Entry
+    ATTRLIST *attr_list = calloc(1, sizeof(ATTRLIST));
+    attr_list->next = NULL;
+    attr_list->prev = NULL;
+    strcpy( attr_list->name, "objectClass");
+    VALLIST *val = calloc(1, sizeof(VALLIST));
+    strcpy( val->value, "subscriber" );
+    LINKEDLIST_APPEND( attr_list->vals, val);
+    
+    val = calloc(1, sizeof(VALLIST));
+    strcpy( val->value, "subscriber1" );
+    LINKEDLIST_APPEND( attr_list->vals, val);
+    
+    //LINKEDLIST_APPEND( attr_list, attr_list);
+    ASSERT( GRPC_gen_entry_ldap(&entry, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "objectClass", attr_list, error) == GRPC_RET_OK );
+
+    
+    ASSERT( GRPC_gen_add_request(0x01, &buffer, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", NULL, 0, error) == GRPC_RET_OK );
+    ASSERT( buffer->len >= 0);
+
+    decode_req  = pb__request__unpack(NULL, buffer->len, (void*)buffer->data);
+    ASSERT(decode_req != NULL);
+    ASSERT(decode_req->id == 0x01);
+    ASSERT(decode_req->scope == PB__SEARCH_SCOPE__BaseObject);
+    ASSERT(strcmp(decode_req->dn, "dc=C-NTDB") == 0);
+    DEBUG("DN: %s", decode_req->basedn);
+    ASSERT(strcmp(decode_req->basedn, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB") == 0);
+    WAIT();
+    ASSERT(strcmp(decode_req->filter, "(objectClass=*)") == 0);
+    ASSERT(decode_req->recursive == 0);
+    ASSERT(decode_req->entry == NULL);
+    pb__request__free_unpacked(decode_req, NULL);
+    
     return TEST_RESULT_SUCCESSED;
 }
 

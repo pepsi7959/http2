@@ -13,4 +13,4 @@ grpc.a: grpc.o
 	ar -r grpc.a grpc.o
 
 test_grpc:
-	gcc -g -Wall test_grpc.c grpc.a ../proto/helloworld.pb-c.c ../proto/d21.pb-c.c -I. ${PROTO_INCLUDE} ${COMMON_INCLUDE}  -lprotobuf-c -o test_grpc
+	gcc -static -g -Wall test_grpc.c grpc.a ../proto/helloworld.pb-c.c ../proto/d21.pb-c.c -I. ${PROTO_INCLUDE} ${COMMON_INCLUDE}  -lprotobuf-c -o test_grpc
