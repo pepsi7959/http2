@@ -442,7 +442,7 @@ int GRPC_get_ldap_reqsponse(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *
     }
     
     if( ldap_result == NULL ){
-        if( error != NULL ) sprintf(error, "**json_response is NULL");
+        if( error != NULL ) sprintf(error, "**LDAP_RESULT is NULL");
         return GRPC_RET_INVALID_PARAMETER;
     }
     
