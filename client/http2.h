@@ -60,7 +60,7 @@ typedef struct _encoder_t{
 }HTTP2_ENCODER;
 
 
-typedef _http2_message_t{
+typedef struct _http2_message_t{
     struct _http2_message_t *next;
     struct _http2_message_t *prev;
     char group[HTTP2_MAX_SIZE_GROUP_NAME];      //Group of connection that use to specific 
