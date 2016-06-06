@@ -497,11 +497,11 @@ int GRPC_get_ldap_reqsponse(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *
                 if( k == 0){
                     blen += sprintf((char *)(buf->data+blen), "\"%s\"", attr->values[k]);
                 }else{
-                    blen += sprintf((char *)(buf->data+blen), "\",%s\"", attr->values[k]);
+                    blen += sprintf((char *)(buf->data+blen), ",\"%s\"", attr->values[k]);
                 }
             }
             if(attr->n_values > 1){
-                blen += sprintf((char *)(buf->data+blen), "}]");
+                blen += sprintf((char *)(buf->data+blen), "]");
             }
             
         }
