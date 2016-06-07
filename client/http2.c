@@ -720,6 +720,7 @@ int HTTP2_write_header(HTTP2_CONNECTION *conn, HTTP2_BUFFER **header_block, HEAD
     //TODO: Shold be use realloc instead of malloc
     if(*header_block == NULL){
         *header_block           = malloc(sizeof(HTTP2_BUFFER)+sizeof(char)*1024);
+        memset((*header_block),0 , sizeof(HTTP2_BUFFER)+sizeof(char)*1024);
         (*header_block)->size   = 1024;
         (*header_block)->len    = 0;
         (*header_block)->cur    = 0;
