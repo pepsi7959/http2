@@ -4,7 +4,6 @@
 
 #include "grpc.h"
 
-static char *BASE_DN = "dc=C-NTDB";
 static Pb__Request req;
 
 int GRPC_send_request(GRPC_BUFFER *buffer);
@@ -170,12 +169,7 @@ int GRPC_gen_entry_ldap(Pb__Entry **entry, char *dn, char *objectclass, ATTRLIST
 }
 
 int GRPC_gen_delete_request(unsigned int tid, GRPC_BUFFER **buffer, char *base_dn, int flags, char *error){
-    if(*buffer == NULL){
-        *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*1024);
-        (*buffer)->size    = 1024;
-        (*buffer)->len     = 0;
-    }
-    
+   
     //Generate Delete Request
     int len                 = 0;
     GRPC_BUFFER *buff       = *buffer;
@@ -185,7 +179,7 @@ int GRPC_gen_delete_request(unsigned int tid, GRPC_BUFFER **buffer, char *base_d
     req.id                 = tid;
     req.basedn             = NULL;
     req.filter             = NULL;
-    req.dn                 = (char *)base_dn;
+    req.basedn             = (char *)base_dn;
     
     req.has_method         = 1;
     req.method             = PB__RESTMETHOD__DELETE;
@@ -201,7 +195,14 @@ int GRPC_gen_delete_request(unsigned int tid, GRPC_BUFFER **buffer, char *base_d
     req.attributes         = NULL;
     
     len = pb__request__get_packed_size(&req);
-    if( len > buff->size - buff->len ){
+    
+    if(*buffer == NULL){
+        *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*len);
+        (*buffer)->size    = len;
+        (*buffer)->len     = 0;
+    }
+    
+    if( len > (*buffer)->size - (*buffer)->len ){
         //reallocate buffer
         if( error != NULL ) sprintf(error, "Insufficient buffer!!");
         return GRPC_RET_UNIMPLEMENT;
@@ -256,11 +257,6 @@ int GRPC_gen_add_request(unsigned int tid, GRPC_BUFFER **buffer, const char *bas
 }
 
 int GRPC_gen_modity_request(unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *entry, int flags, char *error){
-    if(*buffer == NULL){
-        *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*1024);
-        (*buffer)->size    = 1024;
-        (*buffer)->len     = 0;
-    }
     
     //Generate Request
     Pb__Request *req        = calloc(1,sizeof(Pb__Request));
@@ -280,7 +276,14 @@ int GRPC_gen_modity_request(unsigned int tid, GRPC_BUFFER **buffer, const char *
     req->entry              = entry;
     
     len = pb__request__get_packed_size(req);
-    if( len > buff->size - buff->len ){
+    
+    if(*buffer == NULL){
+        *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*len);
+        (*buffer)->size    = len;
+        (*buffer)->len     = 0;
+    }
+    
+    if( len > (*buffer)->size - (*buffer)->len ){
         //reallocate buffer
         if( error != NULL ) sprintf(error, "Insufficient buffer!!");
         return GRPC_RET_UNIMPLEMENT;
@@ -296,12 +299,7 @@ int GRPC_gen_modity_request(unsigned int tid, GRPC_BUFFER **buffer, const char *
 }
 
 int GRPC_gen_search_request(unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, const char *scope, const char *filter, const char **attrs, int flags, char *error){
-    if(*buffer == NULL){
-        *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*1024);
-        (*buffer)->size    = 1024;
-        (*buffer)->len     = 0;
-    }
-    
+   
     //Generate Request
     Pb__Request *req        = calloc(1,sizeof(Pb__Request));
     int len                 = 0;
@@ -312,7 +310,7 @@ int GRPC_gen_search_request(unsigned int tid, GRPC_BUFFER **buffer, const char *
     req->id                 = tid;
     req->basedn             = (char *)base_dn;
     req->filter             = (char *)filter;
-    req->dn                 = BASE_DN;
+    req->dn                 = NULL;
     
     req->has_method         = 1;
     req->method             = PB__RESTMETHOD__GET;
@@ -329,7 +327,14 @@ int GRPC_gen_search_request(unsigned int tid, GRPC_BUFFER **buffer, const char *
     req->attributes         = &attr;
     
     len = pb__request__get_packed_size(req);
-    if( len > buff->size - buff->len ){
+    
+    if(*buffer == NULL){
+        *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*len);
+        (*buffer)->size    = len;
+        (*buffer)->len     = 0;
+    }
+    
+    if( len > (*buffer)->size - (*buffer)->len ){
         //reallocate buffer
         if( error != NULL ) sprintf(error, "Insufficient buffer!!");
         return GRPC_RET_UNIMPLEMENT;
@@ -411,11 +416,11 @@ int GRPC_get_reqsponse(unsigned int *tid, GRPC_BUFFER **json_response , GRPC_BUF
                 if( k == 0){
                     blen += sprintf((char *)(buf->data+blen), "\"%s\"", attr->values[k]);
                 }else{
-                    blen += sprintf((char *)(buf->data+blen), "\",%s\"", attr->values[k]);
+                    blen += sprintf((char *)(buf->data+blen), ",\"%s\"", attr->values[k]);
                 }
             }
             if(attr->n_values > 1){
-                blen += sprintf((char *)(buf->data+blen), "}]");
+            blen += sprintf((char *)(buf->data+blen), "]");
             }
             
         }
@@ -442,7 +447,7 @@ int GRPC_get_ldap_reqsponse(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *
     }
     
     if( ldap_result == NULL ){
-        if( error != NULL ) sprintf(error, "**json_response is NULL");
+        if( error != NULL ) sprintf(error, "**LDAP_RESULT is NULL");
         return GRPC_RET_INVALID_PARAMETER;
     }
     
@@ -497,11 +502,11 @@ int GRPC_get_ldap_reqsponse(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *
                 if( k == 0){
                     blen += sprintf((char *)(buf->data+blen), "\"%s\"", attr->values[k]);
                 }else{
-                    blen += sprintf((char *)(buf->data+blen), "\",%s\"", attr->values[k]);
+                    blen += sprintf((char *)(buf->data+blen), ",\"%s\"", attr->values[k]);
                 }
             }
             if(attr->n_values > 1){
-                blen += sprintf((char *)(buf->data+blen), "}]");
+                blen += sprintf((char *)(buf->data+blen), "]");
             }
             
         }

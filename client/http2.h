@@ -11,6 +11,7 @@
 #define HTTP2_MAX_WRITE_BUFFER_SIZE             (4*1024*1024)
 #define HTTP2_MAX_READ_BUFFER_SIZE              (4*1024*1024)
 #define HTTP2_MAX_BUFFER_SISE                   (4096)
+#define HTTP2_MAX_SIZE_GROUP_NAME               128
 
 enum HTTP2_CONNECTION_STATE{
     HTTP2_CONNECTION_STATE_OPEN = 0,
@@ -57,6 +58,15 @@ typedef struct _decoder_t{
 typedef struct _encoder_t{
     
 }HTTP2_ENCODER;
+
+
+typedef struct _http2_message_t{
+    struct _http2_message_t *next;
+    struct _http2_message_t *prev;
+    char group[HTTP2_MAX_SIZE_GROUP_NAME];      //Group of connection that use to specific 
+    int service;                                //Service of GRPC
+    HTTP2_BUFFER *buffer;
+}HTTP2_MESSAGES;
 
 typedef struct _connection_t{
     struct _connection_t    *next;
@@ -131,7 +141,7 @@ typedef struct _host_t{
     HTTP2_CONNECTION        *ready_queue;
     HTTP2_CONNECTION        *wait_queue;
     HTTP2_CONNECTION        *connection_pool[HTTP2_MAX_CONNECTION];
-    HTTP2_BUFFER            *send_msg_queue;
+    HTTP2_MESSAGES          *send_msg_queue;
     void                    *context;
 }HTTP2_HOST;
 
