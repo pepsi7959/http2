@@ -147,8 +147,8 @@ int HTTP2_playload_decode(HTTP2_FRAME_BUFFER *buffer, HTTP2_FRAME_FORMAT *frame,
             sprintf(error, "HTTP2_RETURN_UNIMPLEMENTED\n");
             return HTTP2_RETURN_UNIMPLEMENTED;
         case HTTP2_FRAME_RST_STREAM:  
-            sprintf(error, "HTTP2_RETURN_UNIMPLEMENTED\n");
-            return HTTP2_RETURN_UNIMPLEMENTED;
+            buffer->cur += frame->length;
+            break;
         case HTTP2_FRAME_SETTINGS:  
         {
             HTTP2_PLAYLOAD_SETTINGS *playload  = malloc(1 * sizeof(HTTP2_PLAYLOAD_SETTINGS));
@@ -217,7 +217,7 @@ int HTTP2_frame_decode(HTTP2_FRAME_BUFFER *buffer, HTTP2_FRAME_FORMAT **frame, c
         printf("Reuse frame\n");
         nframe = *frame;
     }
-    
+    printf("Cur buffer : %d\n", buffer->cur);
     READBYTE(buffer->data, buffer->cur, 3, tmp_uint);
     nframe->length   = (unsigned int)tmp_uint;
     if( (nframe->length + MINIMUM_FRAME_SIZE) > buffer->len ){
@@ -250,6 +250,7 @@ int HTTP2_frame_decode(HTTP2_FRAME_BUFFER *buffer, HTTP2_FRAME_FORMAT **frame, c
     if( nframe->length > 0 ){
         if( buffer->len - buffer->cur >= nframe->length ){
             if( (r = HTTP2_playload_decode(buffer, nframe, error)) != HTTP2_RETURN_NO_ERROR ){
+                printf("HTTP2_playload_decode return error : %s", error);
                 return r;
             }
         }

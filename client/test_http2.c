@@ -843,6 +843,238 @@ int test_HTTP2_insert_length(){
     return TEST_RESULT_SUCCESSED;
 }
 
+int test_GRPC_send_message_to_d21(){
+       unsigned char header_frame[]    = { 0x83,0x86,0x44,0x88,0x62,0xb8,0xd7,0xbe,
+                                        0x20,0xb1,0x7c,0xff,0x41,0x89,0x08,0x17,
+                                        0x13,0x62,0x5c,0x2e,0x3e,0xb8,0x41,0x5f,
+                                        0x8b,0x1d,0x75,0xd0,0x62,0x0d,0x26,0x3d,
+                                        0x4c,0x4d,0x65,0x64,0x7a,0x89,0x9a,0xca,
+                                        0xc8,0xb4,0xc7,0x60,0x0b,0x84,0x3f,0x40,
+                                        0x02,0x74,0x65,0x86,0x4d,0x83,0x35,0x05,
+                                        0xb1,0x1f,0x40,0x89,0x9a,0xca,0xc8,0xb2,
+                                        0x4d,0x49,0x4f,0x6a,0x7f,0x86,0x69,0xf7,
+                                        0xdf,0x13,0x56,0xff,0x83,0x86,0xc3,0xc2,
+                                        0xc1,0xc0,0xbf};
+/*         unsigned char frame[] = {   0x00,0x00,0x4c,0x01,0x04,0x00,0x00,0x00,
+                                0x01,0x83,0x86,0x44,0x88,0x62,0xb8,0xd7,
+                                0xbe,0x20,0xb1,0x7c,0xff,0x41,0x89,0x08,
+                                0x17,0x13,0x62,0x5c,0x2e,0x3e,0xb8,0x41,
+                                0x5f,0x8b,0x1d,0x75,0xd0,0x62,0x0d,0x26,
+                                0x3d,0x4c,0x4d,0x65,0x64,0x7a,0x89,0x9a,
+                                0xca,0xc8,0xb4,0xc7,0x60,0x0b,0x84,0x3f,
+                                0x40,0x02,0x74,0x65,0x86,0x4d,0x83,0x35,
+                                0x05,0xb1,0x1f,0x40,0x89,0x9a,0xca,0xc8,
+                                0xb2,0x4d,0x49,0x4f,0x6a,0x7f,0x86,0x69,
+                                0xf7,0xdf,0x13,0x56,0xff,
+                                
+                                0x00,0x00,0x59,0x00,0x01,0x00,0x00,0x00,
+                                0x01,0x00,0x00,0x00,0x00,0x54,
+                                
+                                0x08,0x82,0x8a,0xcc,0xfa,0xbc,0x94,0x95,
+                                0xf0,0xc5,0x01,0x18,0x01,0x22,0x31,0x75,
+                                0x69,0x64,0x3d,0x30,0x30,0x30,0x30,0x30,
+                                0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,
+                                0x30,0x30,0x2c,0x64,0x73,0x3d,0x53,0x55,
+                                0x42,0x53,0x43,0x52,0x49,0x42,0x45,0x52,
+                                0x2c,0x6f,0x3d,0x41,0x49,0x53,0x2c,0x64,
+                                0x63,0x3d,0x43,0x2d,0x4e,0x54,0x44,0x42,
+                                0x2a,0x0f,0x28,0x6f,0x62,0x6a,0x65,0x63,
+                                0x74,0x43,0x6c,0x61,0x73,0x73,0x3d,0x2a,
+                                0x29,0x32,0x01,0x2a
+                                
+                                }; */
+                                
+    HTTP2_BUFFER *data      = NULL;
+    data                    = malloc(sizeof(GRPC_BUFFER) + 2048*10);
+    data->data[0]           = 0;
+    data->size              = 2048*10;
+    data->len               = 0;
+    
+    char error[1024];
+    error[0]                = 0;
+    int r                   = 0;
+    HTTP2_HOST *hc          = NULL;
+    HTTP2_CONNECTION *conn  = NULL;
+
+    hc = (HTTP2_HOST*)malloc(sizeof(HTTP2_HOST));
+    memset(hc, 0, sizeof(HTTP2_HOST));
+    hc->max_connection      = HTTP2_MAX_CONNECTION;
+    hc->connection_count    = 0;
+    hc->list_addr           = NULL;
+    hc->max_concurrence     = 0;
+    hc->max_wbuffer         = HTTP2_MAX_WRITE_BUFFER_SIZE;
+    hc->ready_queue         = NULL;
+    hc->wait_queue          = NULL;
+    strcat(hc->name,"D21");
+
+    HTTP2_CLNT_ADDR *addr   = (HTTP2_CLNT_ADDR*)malloc(sizeof(HTTP2_CLNT_ADDR));
+    addr->port              = 6051;
+    addr->next              = NULL;
+    addr->prev              = NULL;
+    strcpy(addr->host, "127.0.0.1");
+    
+    LINKEDLIST_APPEND(hc->list_addr, addr);
+    
+    if( (r = HTTP2_open(hc, &conn, error)) != HTTP2_RET_OK ){
+        DEBUG("test_HTTP2_open() return %d,0x[%s]\n", r, error);
+        return TEST_RESULT_FAILED;
+    }
+
+    ASSERT(hc->connection_count == 1);
+    ASSERT(hc->wait_queue != NULL);
+    ASSERT(hc->list_addr == addr);
+    ASSERT(hc == conn->ref_group);
+    ASSERT(conn->w_buffer->size < HTTP2_MAX_BUFFER_SISE);
+    
+    HTTP2_write(conn , error);
+    ASSERT( conn->state == HTTP2_CONNECTION_STATE_CONNECTING );
+    sleep(1);
+    
+    ASSERT( HTTP2_read(conn, error) == HTTP2_RET_READY );
+    ASSERT( conn->state == HTTP2_CONNECTION_STATE_READY );
+     
+    /* Prepare Header */
+    HTTP2_BUFFER *hb = calloc(1, sizeof(HTTP2_BUFFER)+sizeof(char)*1024);
+        
+    HEADER_FIELD hf1 = {NULL,NULL,0,0,":method", "POST"};
+    ASSERT( HTTP2_write_header(conn, &hb, &hf1, error) == HTTP2_RET_OK);
+    ASSERT( memcmp(hb->data, header_frame, hb->len) == 0);
+    
+    HEADER_FIELD hf2 = {NULL,NULL,0,0,":scheme", "http"};
+    ASSERT( HTTP2_write_header(conn, &hb, &hf2, error) == HTTP2_RET_OK);
+    ASSERT( memcmp(hb->data, header_frame, hb->len) == 0);
+
+    HEADER_FIELD hf3 = {NULL,NULL,0,0,":path", "/pb.D21/ResolveAlias"};
+    ASSERT( HTTP2_write_header(conn, &hb, &hf3, error) == HTTP2_RET_OK);
+    //ASSERT( memcmp(hb->data, header_frame, hb->len) == 0);
+    
+    HEADER_FIELD hf4 = {NULL,NULL,0,0,":authority", "127.0.0.1"};
+    ASSERT( HTTP2_write_header(conn, &hb, &hf4, error) == HTTP2_RET_OK);
+    //ASSERT( memcmp(hb->data, header_frame, hb->len) == 0);
+    
+    HEADER_FIELD hf5 = {NULL,NULL,0,0,"content-type", "application/grpc"};
+    ASSERT( HTTP2_write_header(conn, &hb, &hf5, error) == HTTP2_RET_OK);
+    //ASSERT( memcmp(hb->data, header_frame, hb->len) == 0);
+    
+    HEADER_FIELD hf6 = {NULL,NULL,0,0,"user-agent", "grpc-go/0.11"};
+    ASSERT( HTTP2_write_header(conn, &hb, &hf6, error) == HTTP2_RET_OK);
+    //ASSERT( memcmp(hb->data, header_frame, hb->len) == 0);
+    
+    HEADER_FIELD hf7 = {NULL,NULL,0,0,"te", "trailers"};
+    ASSERT( HTTP2_write_header(conn, &hb, &hf7, error) == HTTP2_RET_OK);
+    //ASSERT( memcmp(hb->data, header_frame, hb->len) == 0);
+    
+    HEADER_FIELD hf71 = {NULL,NULL,0,0,"grpc-timeout", "500m"};
+    ASSERT( HTTP2_write_header(conn, &hb, &hf71, error) == HTTP2_RET_OK);
+    //ASSERT( memcmp(hb->data, header_frame, hb->len) == 0);
+    
+        
+
+
+    /* Generate Request */
+    ASSERT( GRPC_gen_search_request(1239909, &data,"msisdn=66000000000000001,dc=MSISDN,dc=C-NTDB", "sub", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
+    HTTP2_send_message(hc, conn, hb, data, error);
+
+    if( HTTP2_read(conn, error)  != HTTP2_RET_OK ) printf("read : %s\n",error);
+    if ( HTTP2_decode(conn, error) != HTTP2_RET_OK ) printf("decode : %s\n",error);
+    
+    unsigned int tid = 0;
+    HTTP2_BUFFER *buffer = NULL;
+    if( conn->frame_recv->type == HTTP2_FRAME_DATA){
+        ASSERT( GRPC_get_reqsponse(&tid, &buffer, conn->frame_recv->data_playload->data, error) == GRPC_RET_OK);
+    }
+
+    ASSERT( HTTP2_write(conn , error) == HTTP2_RET_SENT );
+    ASSERT( conn->w_buffer->len == 0);
+    
+    Pb__Entry *entry    = NULL;
+    LDAP_RESULT *lc     = NULL;
+    while(1){
+        HTTP2_read(conn, error);
+        if( HTTP2_decode(conn, error) == HTTPP_RET_DATA_AVAILABLE ){
+            if( conn->frame_recv->type == HTTP2_FRAME_DATA){
+                HTTP2_BUFFER *x = (HTTP2_BUFFER*)conn->frame_recv->data_playload->data;
+                HEXDUMP(x->data, x->len);
+                //ASSERT( GRPC_get_reqsponse(&tid, &buffer, conn->frame_recv->data_playload->data, error) == GRPC_RET_OK);
+                ASSERT( GRPC_get_ldap_reqsponse(&lc, conn->frame_recv->data_playload->data, error) == GRPC_RET_OK);
+                //DEBUG("data [%s] tid[%u]\n", buffer->data, lc->tid);
+                DEBUG("TID: %d", lc->tid);
+                if( lc->bstring != NULL)
+                    DEBUG("Message ldap: %s", lc->bstring->data);
+            }
+        }
+
+        //ASSERT( tid == 0x0188 );
+        /*
+        hb->len = 0;
+        ASSERT( HTTP2_write_header(conn, &hb, &hf1, error) == HTTP2_RET_OK);
+        ASSERT( HTTP2_write_header(conn, &hb, &hf2, error) == HTTP2_RET_OK);
+        ASSERT( HTTP2_write_header(conn, &hb, &hf3, error) == HTTP2_RET_OK);
+        ASSERT( HTTP2_write_header(conn, &hb, &hf4, error) == HTTP2_RET_OK);
+        ASSERT( HTTP2_write_header(conn, &hb, &hf5, error) == HTTP2_RET_OK);
+        ASSERT( HTTP2_write_header(conn, &hb, &hf6, error) == HTTP2_RET_OK);
+        ASSERT( HTTP2_write_header(conn, &hb, &hf7, error) == HTTP2_RET_OK);
+
+
+        //Search
+        data->len = 0;
+        ASSERT( GRPC_gen_search_request(0x123, &data,"UID=000000000000002,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
+        HTTP2_send_message(hc, conn, hb, data, error);
+        HTTP2_write(conn , error);
+        
+        //Delete
+        data->len = 0;
+        ASSERT( GRPC_gen_delete_request(0x123, &data,"uid=000000000000002,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", 0, error) == GRPC_RET_OK);
+        HTTP2_send_message(hc, conn, hb, data, error);
+        HTTP2_write(conn , error);
+
+        data->len   = 0;
+        //GRPC_gen_entry(&entry, "uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "subscriber", NULL, 1, error);
+        ATTRLIST *attr_list = calloc(1, sizeof(ATTRLIST));
+        attr_list->next = NULL;
+        attr_list->prev = NULL;
+        strcpy( attr_list->name, "objectClass");
+        VALLIST *val = calloc(1, sizeof(VALLIST));
+        strcpy( val->value, "subscriber" );
+        LINKEDLIST_APPEND( attr_list->vals, val);
+        entry = NULL;
+        ASSERT( GRPC_gen_entry_ldap(&entry, "uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "objectClass", attr_list, error) == GRPC_RET_OK );
+        
+        entry->has_method   = 1;
+        entry->method       = PB__ENTRY_METHOD__Add;
+        ASSERT( GRPC_gen_add_request(0x123, &data,"uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", entry, 0, error) == GRPC_RET_OK);
+        HTTP2_send_message(hc, conn, hb, data, error);
+        HTTP2_write(conn , error);
+        
+        data->len   = 0;
+        //GRPC_gen_entry(&entry, "uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "subscriber", NULL, 1, error);
+        attr_list = calloc(1, sizeof(ATTRLIST));
+        attr_list->next = NULL;
+        attr_list->prev = NULL;
+        strcpy( attr_list->name, "objectClass");
+        val = calloc(1, sizeof(VALLIST));
+        strcpy( val->value, "subscriber" );
+        LINKEDLIST_APPEND( attr_list->vals, val);
+        entry = NULL;
+        ASSERT( GRPC_gen_entry_ldap(&entry, "uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "objectClass", attr_list, error) == GRPC_RET_OK );
+        entry->has_method   = 1;
+        entry->method       = PB__ENTRY_METHOD__Replace;
+        ASSERT( GRPC_gen_add_request(0x123, &data,"uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", entry, 0, error) == GRPC_RET_OK);
+        HTTP2_send_message(hc, conn, hb, data, error);
+        HTTP2_write(conn , error);
+        
+        
+        data->len = 0;
+        ASSERT( GRPC_gen_search_request(0x123, &data,"uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
+        HTTP2_send_message(hc, conn, hb, data, error);
+        HTTP2_write(conn , error);
+        */
+        sleep(1);
+    }
+    sleep(1);
+    return TEST_RESULT_SUCCESSED;
+}
+
 void test_all(){
 	//UNIT_TEST(test_HTTP2_open());
     //UNIT_TEST(test_HTTP2_write());
@@ -850,8 +1082,9 @@ void test_all(){
     //UNIT_TEST(test_grpc());
     //UNIT_TEST(test_HTTP2_write_header());
     //UNIT_TEST(test_HTTP2_send_message());
-    UNIT_TEST(test_HTTP2_insert_length());
+    //UNIT_TEST(test_HTTP2_insert_length());
     //UNIT_TEST(test_GRPC_gen_entry_ldap());
+    UNIT_TEST(test_GRPC_send_message_to_d21());
     //WAIT();
 }
 
