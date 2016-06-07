@@ -4,7 +4,6 @@
 
 #include "grpc.h"
 
-static char *BASE_DN = "dc=C-NTDB";
 static Pb__Request req;
 
 int GRPC_send_request(GRPC_BUFFER *buffer);
@@ -312,7 +311,7 @@ int GRPC_gen_search_request(unsigned int tid, GRPC_BUFFER **buffer, const char *
     req->id                 = tid;
     req->basedn             = (char *)base_dn;
     req->filter             = (char *)filter;
-    req->dn                 = BASE_DN;
+    req->dn                 = NULL;
     
     req->has_method         = 1;
     req->method             = PB__RESTMETHOD__GET;
