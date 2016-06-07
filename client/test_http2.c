@@ -39,12 +39,12 @@ int test_HTTP2_open(){
     ASSERT( strcmp(hc->name, "d21") == 0);
     ASSERT( hc->max_concurrence == HTTP2_MAX_CONCURRENCE );
     
-    ASSERT( HTTP2_addr_add(hc, "127.0.0.1", 50051, 10, error) == HTTP2_RET_OK );
+    ASSERT( HTTP2_addr_add(hc, "127.0.0.1", 6051, 10, error) == HTTP2_RET_OK );
     ASSERT( hc->list_addr != NULL );
     ASSERT( hc->list_addr->next == hc->list_addr);
     ASSERT( hc->list_addr->prev == hc->list_addr);
     ASSERT( strcmp(hc->list_addr->host, "127.0.0.1") == 0 );
-    ASSERT( hc->list_addr->port == 50051 );
+    ASSERT( hc->list_addr->port == 6051 );
     ASSERT( hc->list_addr->max_connection == 10 );
     ASSERT( hc->list_addr_count == 1);
     
@@ -80,7 +80,7 @@ int test_HTTP2_write(){
     HTTP2_CONNECTION *conn  = NULL;
 
     ASSERT( HTTP2_host_create(&hc, "d21", 1, error) == HTTP2_RET_OK );
-    ASSERT( HTTP2_addr_add(hc, "127.0.0.1", 50051, 10, error) == HTTP2_RET_OK );
+    ASSERT( HTTP2_addr_add(hc, "127.0.0.1", 6051, 10, error) == HTTP2_RET_OK );
 
     if( (r = HTTP2_open(hc, &conn, error)) != HTTP2_RET_OK ){
         DEBUG("test_HTTP2_open() return %d,0x[%s]\n", r, error);
@@ -219,7 +219,7 @@ int test_HTTP2_decode(){
     HTTP2_CONNECTION *conn  = NULL;
 
     ASSERT( HTTP2_host_create(&hc, "d21", 1, error) == HTTP2_RET_OK );
-    ASSERT( HTTP2_addr_add(hc, "127.0.0.1", 50051, 10, error) == HTTP2_RET_OK );
+    ASSERT( HTTP2_addr_add(hc, "127.0.0.1", 6051, 10, error) == HTTP2_RET_OK );
     
     if( (r = HTTP2_open(hc, &conn, error)) != HTTP2_RET_OK ){
         DEBUG("test_HTTP2_open() return %d,0x[%s]\n", r, error);
@@ -844,14 +844,14 @@ int test_HTTP2_insert_length(){
 }
 
 void test_all(){
-	//UNIT_TEST(test_HTTP2_open());
-    //UNIT_TEST(test_HTTP2_write());
-    //UNIT_TEST(test_HTTP2_decode());
-    //UNIT_TEST(test_grpc());
-    //UNIT_TEST(test_HTTP2_write_header());
-    //UNIT_TEST(test_HTTP2_send_message());
+	UNIT_TEST(test_HTTP2_open());
+    UNIT_TEST(test_HTTP2_write());
+    UNIT_TEST(test_HTTP2_decode());
+    UNIT_TEST(test_grpc());
+    UNIT_TEST(test_HTTP2_write_header());
+    UNIT_TEST(test_HTTP2_send_message());
     UNIT_TEST(test_HTTP2_insert_length());
-    //UNIT_TEST(test_GRPC_gen_entry_ldap());
+    UNIT_TEST(test_GRPC_gen_entry_ldap()); 
     //WAIT();
 }
 

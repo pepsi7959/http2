@@ -247,7 +247,6 @@ int test_GRPC_gen_search_request(){
     ASSERT(decode_req != NULL);
     ASSERT(decode_req->id == 0x01);
     ASSERT(decode_req->scope == PB__SEARCH_SCOPE__BaseObject);
-    ASSERT(strcmp(decode_req->dn, "dc=C-NTDB") == 0);
     DEBUG("DN: %s", decode_req->basedn);
     ASSERT(strcmp(decode_req->basedn, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB") == 0);
     WAIT();
