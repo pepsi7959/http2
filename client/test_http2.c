@@ -1076,17 +1076,6 @@ int test_GRPC_send_message_to_d21(){
 }
 
 void test_all(){
-<<<<<<< HEAD
-	//UNIT_TEST(test_HTTP2_open());
-    //UNIT_TEST(test_HTTP2_write());
-    //UNIT_TEST(test_HTTP2_decode());
-    //UNIT_TEST(test_grpc());
-    //UNIT_TEST(test_HTTP2_write_header());
-    //UNIT_TEST(test_HTTP2_send_message());
-    //UNIT_TEST(test_HTTP2_insert_length());
-    //UNIT_TEST(test_GRPC_gen_entry_ldap());
-    UNIT_TEST(test_GRPC_send_message_to_d21());
-=======
 	UNIT_TEST(test_HTTP2_open());
     UNIT_TEST(test_HTTP2_write());
     UNIT_TEST(test_HTTP2_decode());
@@ -1095,7 +1084,6 @@ void test_all(){
     UNIT_TEST(test_HTTP2_send_message());
     UNIT_TEST(test_HTTP2_insert_length());
     UNIT_TEST(test_GRPC_gen_entry_ldap()); 
->>>>>>> 26cf706b5182f73613f8ff61efc6442bf1f7e7fd
     //WAIT();
 }
 

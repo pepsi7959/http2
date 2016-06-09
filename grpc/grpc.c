@@ -172,7 +172,6 @@ int GRPC_gen_delete_request(unsigned int tid, GRPC_BUFFER **buffer, char *base_d
    
     //Generate Delete Request
     int len                 = 0;
-    GRPC_BUFFER *buff       = *buffer;
     pb__request__init(&req);
     
     req.has_id             = 1;
@@ -208,11 +207,11 @@ int GRPC_gen_delete_request(unsigned int tid, GRPC_BUFFER **buffer, char *base_d
         return GRPC_RET_UNIMPLEMENT;
     }
     
-    if( pb__request__pack(&req, buff->data) != len ){
+    if( pb__request__pack(&req, (*buffer)->data) != len ){
         if( error != NULL ) sprintf(error, "pb__request__pack return invalid length");
         return GRPC_RET_INVALID_LENGTH;
     }
-    buff->len = len;
+    (*buffer)->len = len;
     return GRPC_RET_OK;
 }
 
@@ -261,7 +260,6 @@ int GRPC_gen_modity_request(unsigned int tid, GRPC_BUFFER **buffer, const char *
     //Generate Request
     Pb__Request *req        = calloc(1,sizeof(Pb__Request));
     int len                 = 0;
-    GRPC_BUFFER *buff       = *buffer;
     pb__request__init(req);
     
     req->has_id             = 1;
@@ -289,11 +287,11 @@ int GRPC_gen_modity_request(unsigned int tid, GRPC_BUFFER **buffer, const char *
         return GRPC_RET_UNIMPLEMENT;
     }
     
-    if( pb__request__pack(req, buff->data) != len ){
+    if( pb__request__pack(req, (*buffer)->data) != len ){
         if( error != NULL ) sprintf(error, "pb__request__pack return invalid length");
         return GRPC_RET_INVALID_LENGTH;
     }
-    buff->len = len;
+    (*buffer)->len = len;
     
     return GRPC_RET_OK;
 }
@@ -303,7 +301,6 @@ int GRPC_gen_search_request(unsigned int tid, GRPC_BUFFER **buffer, const char *
     //Generate Request
     Pb__Request *req        = calloc(1,sizeof(Pb__Request));
     int len                 = 0;
-    GRPC_BUFFER *buff       = *buffer;
     pb__request__init(req);
     
     req->has_id             = 1;
@@ -340,11 +337,11 @@ int GRPC_gen_search_request(unsigned int tid, GRPC_BUFFER **buffer, const char *
         return GRPC_RET_UNIMPLEMENT;
     }
     
-    if( pb__request__pack(req, buff->data) != len ){
+    if( pb__request__pack(req, (*buffer)->data) != len ){
         if( error != NULL ) sprintf(error, "pb__request__pack return invalid length");
         return GRPC_RET_INVALID_LENGTH;
     }
-    buff->len = len;
+    (*buffer)->len = len;
     
     return GRPC_RET_OK;
 
