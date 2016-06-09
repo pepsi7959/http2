@@ -3,9 +3,9 @@
 #include "common.h"
 #include "d21.pb-c.h"
 
-#define MAX_ATTRIBUTE_VALUES        16
-#define MAX_ATTR_NAME_SIZE     256
-#define MAX_ATTR_VALUE_SIZE    256
+#define MAX_ATTRIBUTE_VALUES    16
+#define MAX_ATTR_NAME_SIZE      1024
+#define MAX_ATTR_VALUE_SIZE     8192
 typedef struct _buffer_t GRPC_BUFFER;
 
 enum GRPC_RETURN_CODE{
