@@ -1,4 +1,4 @@
-all : d21 helloworld etcd
+all : d21 helloworld etcd kv auth
 clean:
 	rm *.h *.c
 helloworld:
@@ -7,4 +7,9 @@ d21:
 	protoc-c --c_out=. d21.proto
 etcd :
 	protoc-c --c_out=. rpc.proto
+kv	 :
+	protoc-c --c_out=. kv.proto
+auth :
+	protoc-c --c_out=. auth.proto
+
 

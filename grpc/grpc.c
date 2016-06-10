@@ -3,6 +3,8 @@
 #include <string.h>
 
 #include "grpc.h"
+#include "kv.pb-c.h"
+#include "auth.pb-c.h"
 
 static Pb__Request req;
 
@@ -176,7 +178,6 @@ int GRPC_gen_delete_request(unsigned int tid, GRPC_BUFFER **buffer, char *base_d
     
     req.has_id             = 1;
     req.id                 = tid;
-    req.basedn             = NULL;
     req.filter             = NULL;
     req.basedn             = (char *)base_dn;
     
@@ -520,3 +521,49 @@ int GRPC_get_ldap_reqsponse(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *
 int GRPC_gen_resolve();
 
 int GRPC_gen_register();
+
+int GRPC_get_etcd_range_request(GRPC_BUFFER **buffer, char *prefix, int prefix_len, char *error){
+    Etcdserverpb__RangeRequest *range_req = NULL;
+    range_req = calloc(1,sizeof(Pb__Request));
+    etcdserverpb__range_request__init(range_req);
+    
+    range_req->key.data         = prefix;
+    range_req->key.len          = prefix_len;
+    range_req->has_key          = 1;
+    range_req->has_revision     = 0;
+    //range_req->revision;
+    range_req->has_sort_order   = 0;
+    range_req->sort_order       = ETCDSERVERPB__RANGE_REQUEST__SORT_ORDER__NONE;
+    range_req->has_sort_target  = 1;
+    range_req->sort_target      = ETCDSERVERPB__RANGE_REQUEST__SORT_TARGET__KEY;
+    range_req->has_serializable = 1;
+    range_req->serializable     = 0;
+    
+    int len = etcdserverpb__range_request__get_packed_size(range_req);
+    
+    if(*buffer == NULL){
+        *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*len);
+        (*buffer)->size    = len;
+        (*buffer)->len     = 0;
+    }
+    
+    if( len > (*buffer)->size - (*buffer)->len ){
+        //reallocate buffer
+        if( error != NULL ) sprintf(error, "Insufficient buffer!!");
+        return GRPC_RET_UNIMPLEMENT;
+    }
+    
+    if( etcdserverpb__range_request__pack(range_req, (*buffer)->data) != len ){
+        if( error != NULL ) sprintf(error, "pb__request__pack return invalid length");
+        return GRPC_RET_INVALID_LENGTH;
+    }
+    
+    (*buffer)->len = len;
+    
+    return GRPC_RET_OK;
+}
+
+int GRPC_get_etcd_range_response(GRPC_BUFFER *buffer, Etcdserverpb__RangeResponse **res, char *error){
+    *res = etcdserverpb__range_response__unpack(NULL, buffer->len, (void*)buffer->data);
+    return GRPC_RET_OK;
+}

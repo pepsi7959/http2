@@ -2,6 +2,8 @@
  #define __GRPC_H
 #include "common.h"
 #include "d21.pb-c.h"
+#include "rpc.pb-c.h"
+
 
 #define MAX_ATTRIBUTE_VALUES    16
 #define MAX_ATTR_NAME_SIZE      1024
@@ -68,6 +70,8 @@ int GRPC_gen_search_request(unsigned int tid, GRPC_BUFFER **buffer, const char *
 
 int GRPC_get_reqsponse(unsigned int *tid, GRPC_BUFFER **json_response , GRPC_BUFFER *data, char *error);
 int GRPC_get_ldap_reqsponse(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *error);
+
+int GRPC_get_etcd_range_request(GRPC_BUFFER **buffer, char *prefix, int prefix_len, char *error);
 
 int GRPC_gen_resolve();
 int GRPC_gen_register();

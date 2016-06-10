@@ -429,6 +429,33 @@ int test_GRPC_gen_add_request(){
     return TEST_RESULT_SUCCESSED;
 }
 
+int test_GRPC_get_etcd_range_request(){
+    GRPC_BUFFER *buffer             = NULL;
+    Etcdserverpb__RangeRequest *req = NULL;
+    char error[1024];
+    ASSERT( GRPC_get_etcd_range_request(&buffer, "Damocles", sizeof("Damocles"), error) == GRPC_RET_OK );
+    req = etcdserverpb__range_request__unpack(NULL, buffer->len, (void*)buffer->data);
+    ASSERT( req != NULL );
+    ASSERT( strcmp(req->key.data, "Damocles") == 0);
+    ASSERT( req->key.len          == sizeof("Damocles") );
+    ASSERT( req->has_key          == 1 );
+    ASSERT( req->has_revision     == 0 );
+    ASSERT( req->has_sort_order   == 0 );
+    ASSERT( req->sort_order       == ETCDSERVERPB__RANGE_REQUEST__SORT_ORDER__NONE );
+    ASSERT( req->has_sort_target  == 1 );
+    ASSERT( req->sort_target      == ETCDSERVERPB__RANGE_REQUEST__SORT_TARGET__KEY );
+    ASSERT( req->has_serializable == 1 );
+    ASSERT( req->serializable     == 0 );
+    
+    return TEST_RESULT_SUCCESSED;
+}
+
+int int test_int GRPC_get_etcd_range_response(){
+    unsigned char data[] = {};
+    int GRPC_get_etcd_range_response(GRPC_BUFFER *buffer, Etcdserverpb__RangeResponse **res, char *error)
+    
+    return TEST_RESULT_SUCCESSED;
+}
 void test_all(){
     UNIT_TEST(test_helloworld());
     UNIT_TEST(test_Pb__Request());
@@ -439,6 +466,7 @@ void test_all(){
     UNIT_TEST(test_GRPC_get_reqsponse());
     UNIT_TEST(test_GRPC_get_ldap_reqsponse());
     UNIT_TEST(test_GRPC_gen_entry_ldap());
+    UNIT_TEST(test_GRPC_get_etcd_range_request());
 }
 
 int main(){
