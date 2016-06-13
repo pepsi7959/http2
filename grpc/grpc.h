@@ -6,11 +6,12 @@
 
 
 #define MAX_ATTRIBUTE_VALUES    16
-#define MAX_ATTR_NAME_SIZE      1024
-#define MAX_ATTR_VALUE_SIZE     8192
+#define MAX_ATTR_NAME_SIZE      1024    //!-- DO NOT change value
+#define MAX_ATTR_VALUE_SIZE     8192    //!-- DO NOT change value
 typedef struct _buffer_t GRPC_BUFFER;
 
 enum GRPC_RETURN_CODE{
+    GRPC_RET_NEED_MORE_DATA = 1,
     GRPC_RET_OK             = 0,
     GRPC_RET_NULL_POINTER   = -1,
     GRPC_RET_INVALID_LENGTH = -2,
@@ -43,7 +44,7 @@ struct _attr_list_t
     struct _attr_list_t *next;
     int                 len;
     char                name[MAX_ATTR_NAME_SIZE];
-    VALLIST         *vals;
+    VALLIST             *vals;
 };
 
 typedef struct ldap_result_t LDAP_RESULT;
@@ -71,7 +72,8 @@ int GRPC_gen_search_request(unsigned int tid, GRPC_BUFFER **buffer, const char *
 int GRPC_get_reqsponse(unsigned int *tid, GRPC_BUFFER **json_response , GRPC_BUFFER *data, char *error);
 int GRPC_get_ldap_reqsponse(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *error);
 
-int GRPC_get_etcd_range_request(GRPC_BUFFER **buffer, char *prefix, int prefix_len, char *error);
+int GRPC_get_etcd_range_request(GRPC_BUFFER **buffer, unsigned char *prefix, int prefix_len, unsigned char *range_end , int range_end_len, char *error);
+int GRPC_get_etcd_range_response(GRPC_BUFFER *buffer, ATTRLIST **alist, char *error);
 
 int GRPC_gen_resolve();
 int GRPC_gen_register();

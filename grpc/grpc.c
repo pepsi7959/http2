@@ -5,6 +5,7 @@
 #include "grpc.h"
 #include "kv.pb-c.h"
 #include "auth.pb-c.h"
+#include "linkedlist.h"
 
 static Pb__Request req;
 
@@ -522,7 +523,7 @@ int GRPC_gen_resolve();
 
 int GRPC_gen_register();
 
-int GRPC_get_etcd_range_request(GRPC_BUFFER **buffer, char *prefix, int prefix_len, char *error){
+int GRPC_get_etcd_range_request(GRPC_BUFFER **buffer, unsigned char *prefix, int prefix_len, unsigned char *range_end , int range_end_len, char *error){
     Etcdserverpb__RangeRequest *range_req = NULL;
     range_req = calloc(1,sizeof(Pb__Request));
     etcdserverpb__range_request__init(range_req);
@@ -530,13 +531,16 @@ int GRPC_get_etcd_range_request(GRPC_BUFFER **buffer, char *prefix, int prefix_l
     range_req->key.data         = prefix;
     range_req->key.len          = prefix_len;
     range_req->has_key          = 1;
+    range_req->range_end.data   = range_end;
+    range_req->range_end.len    = range_end_len;
+    range_req->has_range_end    = 1;
     range_req->has_revision     = 0;
     //range_req->revision;
-    range_req->has_sort_order   = 0;
-    range_req->sort_order       = ETCDSERVERPB__RANGE_REQUEST__SORT_ORDER__NONE;
-    range_req->has_sort_target  = 1;
+    range_req->has_sort_order   = 1;
+    range_req->sort_order       = ETCDSERVERPB__RANGE_REQUEST__SORT_ORDER__ASCEND;
+    range_req->has_sort_target  = 0;
     range_req->sort_target      = ETCDSERVERPB__RANGE_REQUEST__SORT_TARGET__KEY;
-    range_req->has_serializable = 1;
+    range_req->has_serializable = 0;
     range_req->serializable     = 0;
     
     int len = etcdserverpb__range_request__get_packed_size(range_req);
@@ -563,7 +567,64 @@ int GRPC_get_etcd_range_request(GRPC_BUFFER **buffer, char *prefix, int prefix_l
     return GRPC_RET_OK;
 }
 
-int GRPC_get_etcd_range_response(GRPC_BUFFER *buffer, Etcdserverpb__RangeResponse **res, char *error){
-    *res = etcdserverpb__range_response__unpack(NULL, buffer->len, (void*)buffer->data);
+int GRPC_get_etcd_range_response(GRPC_BUFFER *buffer, ATTRLIST **alist, char *error){
+    int tmp_int = 0;
+    int i       = 0;
+    Etcdserverpb__RangeResponse *res = NULL;
+    
+    //Checking size 
+    if( buffer == NULL ){
+        if(error != NULL){
+            sprintf(error, "buffer is null");
+        }
+        return GRPC_RET_INVALID_PARAMETER;
+    }
+
+    READBYTE(buffer->data, buffer->cur+1, 4, tmp_int); //1 is skiping encoding flage, 3 is number of size.
+    printf("[%d] > [%d]\n", tmp_int, buffer->len);
+    if( tmp_int > buffer->len){
+        
+        printf("Need more data to unpack [%d] > [%d]\n", tmp_int, buffer->len);
+        return GRPC_RET_NEED_MORE_DATA;
+    }
+    
+    buffer->cur += 5;//skipe encode flage and size
+    
+    res = etcdserverpb__range_response__unpack(NULL, buffer->len-buffer->cur, (void*)buffer->data+buffer->cur);
+    
+    if(res == NULL){
+        if(error != NULL){
+            sprintf(error, "etcdserverpb__range_response__unpack return error");
+        }
+        return GRPC_RET_ERR_UNPACK;
+    }
+    ATTRLIST* attr_n = NULL;
+    VALLIST* attr_v  = NULL;
+    for(i = 0; i < res->n_kvs ; i++){
+        if( res->kvs[i]->has_key ){
+            if( strstr(res->kvs[i]->key.data, "_grpc-addr") != NULL ){
+                attr_n = calloc(1, sizeof(ATTRLIST));
+                attr_n->next = NULL;
+                attr_n->prev = NULL;
+                memcpy(attr_n->name, res->kvs[i]->key.data, res->kvs[i]->key.len);
+                attr_n->len = res->kvs[i]->key.len;
+                attr_n->name[res->kvs[i]->key.len] = 0;
+                printf( "key : %s\n", attr_n->name );
+                
+                if( res->kvs[i]->has_value ){
+                    attr_v = calloc(1, sizeof(VALLIST));
+                    attr_v->next = NULL;
+                    attr_v->prev = NULL;
+                    memcpy(attr_v->value, res->kvs[i]->value.data, res->kvs[i]->value.len);
+                    attr_v->len = res->kvs[i]->value.len;
+                    attr_v->value[res->kvs[i]->value.len] = 0;
+                    printf( "value: %s\n", attr_v->value);
+                    LINKEDLIST_APPEND(attr_n->vals, attr_v);
+                }
+                LINKEDLIST_APPEND((*alist), attr_n);
+            }
+        }
+    }
+    
     return GRPC_RET_OK;
 }
