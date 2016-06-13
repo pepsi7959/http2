@@ -347,6 +347,7 @@ int HTTP2_open(HTTP2_HOST *hc, HTTP2_CONNECTION **hconn, char *error){
     conn->prev              = NULL;
     conn->next              = NULL;
     conn->streamID          = 1;
+    conn->info              = NULL;
     conn->usr_data          = NULL;
     conn->enc               = malloc(sizeof(DYNAMIC_TABLE));
     conn->dec               = malloc(sizeof(DYNAMIC_TABLE));
@@ -962,6 +963,43 @@ int HTTP2_addr_add(HTTP2_HOST *hc, char *host, int port, int max_connection, cha
     addr->prev              = NULL;
     addr->max_connection    = max_connection;
     strcpy(addr->host, host);
+    
+    hc->list_addr_count++;
+    LINKEDLIST_APPEND(hc->list_addr, addr);
+    
+    return HTTP2_RET_OK;
+}
+
+int HTTP2_addr_add_by_cluster(HTTP2_HOST *hc, char *host, int port, int max_connection, char *group, char *cluster_name, unsigned long cluster_id, char *node_name, unsigned long node_id,char *error){
+    if( hc == NULL ){
+        if( error != NULL ) sprintf(error, "HTTP2_HOST* is NULL"); 
+        return HTTP2_RET_INVALID_PARAMETER;
+    }
+    
+    HTTP2_CLNT_ADDR *addr   = (HTTP2_CLNT_ADDR*)malloc(sizeof(HTTP2_CLNT_ADDR));
+    if( addr == NULL ){
+        if( error != NULL ) sprintf(error, "Cannot allocate memory to HTTP2_CLNT_ADDR*"); 
+            return HTTP2_RET_ERR_MEMORY;
+    }
+    addr->port              = port;
+    addr->next              = NULL;
+    addr->prev              = NULL;
+    addr->cluster_id        = cluster_id;
+    addr->node_id           = node_id;
+    addr->max_connection    = max_connection;
+    strcpy(addr->host, host);
+    
+    if( group != NULL ){
+        strcpy(addr->group, group);
+    }
+    
+    if( cluster_name != NULL ){
+        strcpy(addr->cluster_name, cluster_name);
+    }
+    
+    if( node_name != NULL ){
+        strcpy(addr->node_name, node_name);
+    }
     
     hc->list_addr_count++;
     LINKEDLIST_APPEND(hc->list_addr, addr);

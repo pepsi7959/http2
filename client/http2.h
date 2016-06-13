@@ -43,6 +43,14 @@ typedef struct _clnt_addr_t{
     struct _clnt_addr_t *next;
     struct _clnt_addr_t *prev;
     char  host[HTTP2_MAX_STRING_HOST];
+
+    char  group[256];     //D21, D20, D11
+    char  cluster_name[256];   
+    char  node_name[256];
+    
+    unsigned long  node_id;
+    unsigned long  cluster_id;
+    
     int   port;
     int   connection_type;              // type = [ONLINE|STANDBY], default=ONLINE
     int   connection_count;
@@ -107,6 +115,7 @@ typedef struct _connection_t{
     int                     streamID;
     int                     state;
     
+    void                    *info;
     DYNAMIC_TABLE           *enc;
     DYNAMIC_TABLE           *dec;
     HTTP2_BUFFER            *usr_data;
@@ -149,6 +158,7 @@ extern HTTP2_HOST *HTTP2_HOSTS[];
 
 int HTTP2_host_create(HTTP2_HOST **hc, char *name, int max_connection, char *error);
 int HTTP2_addr_add(HTTP2_HOST *hc, char *host, int port, int max_connection, char *error);
+int HTTP2_addr_add_by_cluster(HTTP2_HOST *hc, char *host, int port, int max_connection, char *group, char *cluster_name, unsigned long cluster_id, char *node_name, unsigned long node_id,char *error);
 int HTTP2_open(HTTP2_HOST *hc, HTTP2_CONNECTION **connect, char *error);      /* Estrabishes connnection to sever */
 int HTTP2_connect(HTTP2_HOST *hc, char *error);                                 /* Initialize HTTP2 PREFACE, setting, and widows updates*/
 int HTTP2_write(HTTP2_CONNECTION *conn, char *error);           /* Write data to TCP's buffer */

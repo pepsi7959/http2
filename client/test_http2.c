@@ -39,14 +39,20 @@ int test_HTTP2_open(){
     ASSERT( strcmp(hc->name, "d21") == 0);
     ASSERT( hc->max_concurrence == HTTP2_MAX_CONCURRENCE );
     
-    ASSERT( HTTP2_addr_add(hc, "127.0.0.1", 6051, 10, error) == HTTP2_RET_OK );
+    ASSERT( HTTP2_addr_add_by_cluster(hc, "127.0.0.1", 6051, 10, "d21", "Cluster-1", 0xc21, "d21-1", 0x21, error) == HTTP2_RET_OK );
     ASSERT( hc->list_addr != NULL );
     ASSERT( hc->list_addr->next == hc->list_addr);
     ASSERT( hc->list_addr->prev == hc->list_addr);
     ASSERT( strcmp(hc->list_addr->host, "127.0.0.1") == 0 );
     ASSERT( hc->list_addr->port == 6051 );
     ASSERT( hc->list_addr->max_connection == 10 );
+    ASSERT( strcasecmp(hc->list_addr->group, "d21") == 0 );
+    ASSERT( strcasecmp(hc->list_addr->cluster_name, "Cluster-1") == 0 );
+    ASSERT( strcasecmp(hc->list_addr->node_name, "d21-1") == 0 );
+    ASSERT( hc->list_addr->cluster_id == 0xc21 );
+    ASSERT( hc->list_addr->node_id  == 0x21 );
     ASSERT( hc->list_addr_count == 1);
+    
     
     
     if( (r = HTTP2_open(hc, &conn, error)) != HTTP2_RET_OK ){
@@ -649,10 +655,10 @@ int test_HTTP2_send_message(){
     strcat(hc->name,"D21");
 
     HTTP2_CLNT_ADDR *addr   = (HTTP2_CLNT_ADDR*)malloc(sizeof(HTTP2_CLNT_ADDR));
-    addr->port              = 6051;
+    addr->port              = 7051;
     addr->next              = NULL;
     addr->prev              = NULL;
-    strcpy(addr->host, "127.0.0.1");
+    strcpy(addr->host, "10.252.169.12");
     
     LINKEDLIST_APPEND(hc->list_addr, addr);
     
@@ -736,7 +742,7 @@ int test_HTTP2_send_message(){
                 DEBUG("data [%s] tid[%u]\n", buffer->data, tid);
             }
         }
-    
+/*     
         hb->len = 0;
         ASSERT( HTTP2_write_header(conn, &hb, &hf1, error) == HTTP2_RET_OK);
         ASSERT( HTTP2_write_header(conn, &hb, &hf2, error) == HTTP2_RET_OK);
@@ -800,7 +806,7 @@ int test_HTTP2_send_message(){
         ASSERT( GRPC_gen_search_request(0x123, &data,"uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
         HTTP2_send_message(hc, conn, hb, data, error);
         HTTP2_write(conn , error);
-    
+     */
         sleep(1);
     }
     
@@ -1075,15 +1081,177 @@ int test_GRPC_send_message_to_d21(){
     return TEST_RESULT_SUCCESSED;
 }
 
+int test_GRPC_get_etcd_range_request(){
+                                
+    HTTP2_BUFFER *data      = NULL;
+    data                    = malloc(sizeof(GRPC_BUFFER) + 2048*10);
+    data->data[0]           = 0;
+    data->size              = 2048*10;
+    data->len               = 0;
+    
+    char error[1024];
+    error[0]                = 0;
+    int r                   = 0;
+    HTTP2_HOST *hc          = NULL;
+    HTTP2_CONNECTION *conn  = NULL;
+
+    hc = (HTTP2_HOST*)malloc(sizeof(HTTP2_HOST));
+    memset(hc, 0, sizeof(HTTP2_HOST));
+    hc->max_connection      = HTTP2_MAX_CONNECTION;
+    hc->connection_count    = 0;
+    hc->list_addr           = NULL;
+    hc->max_concurrence     = 0;
+    hc->max_wbuffer         = HTTP2_MAX_WRITE_BUFFER_SIZE;
+    hc->ready_queue         = NULL;
+    hc->wait_queue          = NULL;
+    strcat(hc->name,"D21");
+
+    HTTP2_CLNT_ADDR *addr   = (HTTP2_CLNT_ADDR*)malloc(sizeof(HTTP2_CLNT_ADDR));
+    addr->port              = 4101;
+    addr->next              = NULL;
+    addr->prev              = NULL;
+    strcpy(addr->host, "10.252.169.15");
+    
+    LINKEDLIST_APPEND(hc->list_addr, addr);
+    
+    if( (r = HTTP2_open(hc, &conn, error)) != HTTP2_RET_OK ){
+        DEBUG("test_HTTP2_open() return %d,0x[%s]\n", r, error);
+        return TEST_RESULT_FAILED;
+    }
+
+    ASSERT(hc->connection_count == 1);
+    ASSERT(hc->wait_queue != NULL);
+    ASSERT(hc->list_addr == addr);
+    ASSERT(hc == conn->ref_group);
+    ASSERT(conn->w_buffer->size < HTTP2_MAX_BUFFER_SISE);
+    sleep(1);
+    ASSERT( HTTP2_write(conn , error) == HTTP2_RET_OK );
+    ASSERT( conn->state == HTTP2_CONNECTION_STATE_CONNECTING );
+    sleep(1);
+
+    if( HTTP2_read(conn, error)  != HTTP2_RET_OK ) printf("read : %s\n",error);
+    //ASSERT( HTTP2_read(conn, error) == HTTP2_RET_READY );
+    //ASSERT( conn->state == HTTP2_CONNECTION_STATE_READY );
+            
+    HTTP2_BUFFER *hb = calloc(1, sizeof(HTTP2_BUFFER)+sizeof(char)*1024);
+    HTTP2_BUFFER *hb1 = calloc(1, sizeof(HTTP2_BUFFER)+sizeof(char)*1024);
+    HTTP2_BUFFER *hb2 = calloc(1, sizeof(HTTP2_BUFFER)+sizeof(char)*1024);
+    
+    HEADER_FIELD hf1 = {NULL,NULL,0,0,":method", "POST"};
+    ASSERT( HTTP2_write_header(conn, &hb, &hf1, error) == HTTP2_RET_OK);
+    
+    HEADER_FIELD hf2 = {NULL,NULL,0,0,":scheme", "http"};
+    ASSERT( HTTP2_write_header(conn, &hb, &hf2, error) == HTTP2_RET_OK);
+    
+    HEADER_FIELD hf3 = {NULL,NULL,0,0,":path", "/etcdserverpb.KV/Range"};
+    ASSERT( HTTP2_write_header(conn, &hb, &hf3, error) == HTTP2_RET_OK);
+
+    HEADER_FIELD hf4 = {NULL,NULL,0,0,":authority", "10.252.169.15"};
+    ASSERT( HTTP2_write_header(conn, &hb, &hf4, error) == HTTP2_RET_OK);
+    
+    HEADER_FIELD hf5 = {NULL,NULL,0,0,"content-type", "application/grpc"};
+    ASSERT( HTTP2_write_header(conn, &hb, &hf5, error) == HTTP2_RET_OK);
+    
+    HEADER_FIELD hf6 = {NULL,NULL,0,0,"user-agent", "grpc-go/0.11"};
+    ASSERT( HTTP2_write_header(conn, &hb, &hf6, error) == HTTP2_RET_OK);
+    
+    HEADER_FIELD hf7 = {NULL,NULL,0,0,"te", "trailers"};
+    ASSERT( HTTP2_write_header(conn, &hb, &hf7, error) == HTTP2_RET_OK);
+
+    HEADER_FIELD hf71 = {NULL,NULL,0,0,"grpc-timeout", "1000m"};
+    ASSERT( HTTP2_write_header(conn, &hb, &hf71, error) == HTTP2_RET_OK);
+
+    ASSERT( GRPC_get_etcd_range_request(&data, (unsigned char *)"damocles_d21_", sizeof("damocles_d21_")-1, (unsigned char *)"damocles_d21`", sizeof("damocles_d21`")-1, error) == GRPC_RET_OK );
+    HTTP2_send_message(hc, conn, hb, data, error);
+    
+    HEXDUMP(conn->w_buffer->data, conn->w_buffer->len);
+    
+    ASSERT( HTTP2_write(conn , error) == HTTP2_RET_SENT );
+    sleep(1);
+   /*
+    ASSERT( HTTP2_write_header(conn, &hb1, &hf1, error) == HTTP2_RET_OK);
+    ASSERT( HTTP2_write_header(conn, &hb1, &hf2, error) == HTTP2_RET_OK);
+    HEADER_FIELD hf31 = {NULL,NULL,0,0,":path", "/etcdserverpb.Lease/LeaseKeepAlive"};
+    ASSERT( HTTP2_write_header(conn, &hb1, &hf31, error) == HTTP2_RET_OK);
+    ASSERT( HTTP2_write_header(conn, &hb1, &hf4, error) == HTTP2_RET_OK);
+    ASSERT( HTTP2_write_header(conn, &hb1, &hf5, error) == HTTP2_RET_OK);
+    ASSERT( HTTP2_write_header(conn, &hb1, &hf6, error) == HTTP2_RET_OK);
+    ASSERT( HTTP2_write_header(conn, &hb1, &hf7, error) == HTTP2_RET_OK);
+    
+    data->len = 0;
+    HTTP2_send_message(hc, conn, hb, data, error);
+    ASSERT( HTTP2_write(conn , error) == HTTP2_RET_SENT );
+    sleep(1);
+    
+    ASSERT( HTTP2_write_header(conn, &hb2, &hf1, error) == HTTP2_RET_OK);
+    ASSERT( HTTP2_write_header(conn, &hb2, &hf2, error) == HTTP2_RET_OK);
+    HEADER_FIELD hf32 = {NULL,NULL,0,0,":path", "/etcdserverpb.Watch/Watch"};
+    ASSERT( HTTP2_write_header(conn, &hb2, &hf32, error) == HTTP2_RET_OK);
+    ASSERT( HTTP2_write_header(conn, &hb2, &hf4, error) == HTTP2_RET_OK);
+    ASSERT( HTTP2_write_header(conn, &hb2, &hf5, error) == HTTP2_RET_OK);
+    ASSERT( HTTP2_write_header(conn, &hb2, &hf6, error) == HTTP2_RET_OK);
+    ASSERT( HTTP2_write_header(conn, &hb2, &hf7, error) == HTTP2_RET_OK);
+    
+    data->len = 0;
+    HTTP2_send_message(hc, conn, hb2, data, error);
+    ASSERT( HTTP2_write(conn , error) == HTTP2_RET_SENT );
+    sleep(1);
+    */
+    
+    if( HTTP2_read(conn, error)  != HTTP2_RET_OK ) printf("read : %s\n",error);
+    if ( HTTP2_decode(conn, error) != HTTP2_RET_OK ) printf("decode : %s\n",error);
+       
+    Pb__Entry *entry = NULL;
+
+    while(1){
+        HTTP2_write(conn , error);
+        HTTP2_read(conn, error);
+        if( HTTP2_decode(conn, error) == HTTPP_RET_DATA_AVAILABLE ){
+            if( conn->frame_recv->type == HTTP2_FRAME_DATA){
+                HTTP2_BUFFER *x = (HTTP2_BUFFER*)conn->frame_recv->data_playload->data;
+                //HEXDUMP(x->data, x->len);
+                DEBUG( "data len : %d", x->len);
+                HEXDUMP(conn->usr_data->data, 8);
+                ATTRLIST *alist = NULL;
+                int r = GRPC_get_etcd_range_response(conn->usr_data, &alist, error);
+                DEBUG( "AFTER DECODE");
+                HEXDUMP(conn->usr_data->data, 8);
+                ASSERT(  r == GRPC_RET_OK  || r == GRPC_RET_NEED_MORE_DATA);
+                ATTRLIST *tmp_attr = alist;
+                while( tmp_attr ){
+                    printf("Key: %s\n", tmp_attr->name);
+                    
+                    if( tmp_attr->vals ){
+                        printf("value: %s\n", tmp_attr->vals->value);
+                    }
+                    
+                    tmp_attr = tmp_attr->next;
+                    if(tmp_attr == alist){
+                        break;
+                    }
+                    
+                }
+            }
+        }
+        sleep(1);
+    }
+    
+    sleep(1);
+
+    return TEST_RESULT_SUCCESSED;
+}
+
 void test_all(){
 	UNIT_TEST(test_HTTP2_open());
-    UNIT_TEST(test_HTTP2_write());
+    /*UNIT_TEST(test_HTTP2_write());
     UNIT_TEST(test_HTTP2_decode());
     UNIT_TEST(test_grpc());
     UNIT_TEST(test_HTTP2_write_header());
-    UNIT_TEST(test_HTTP2_send_message());
+
     UNIT_TEST(test_HTTP2_insert_length());
-    UNIT_TEST(test_GRPC_gen_entry_ldap()); 
+    UNIT_TEST(test_GRPC_gen_entry_ldap());  */
+    //UNIT_TEST(test_HTTP2_send_message());
+    UNIT_TEST(test_GRPC_get_etcd_range_request());
     //WAIT();
 }
 
