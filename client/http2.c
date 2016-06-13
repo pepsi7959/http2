@@ -347,6 +347,7 @@ int HTTP2_open(HTTP2_HOST *hc, HTTP2_CONNECTION **hconn, char *error){
     conn->prev              = NULL;
     conn->next              = NULL;
     conn->streamID          = 1;
+    conn->usr_data          = NULL;
     conn->enc               = malloc(sizeof(DYNAMIC_TABLE));
     conn->dec               = malloc(sizeof(DYNAMIC_TABLE));
     
@@ -437,8 +438,6 @@ int HTTP2_write(HTTP2_CONNECTION *conn, char *error){
         
         if (r != 0)
         {
-            if (error!=NULL)
-                sprintf(error, "bind request return error");
             return HTTP2_RET_ERR_CONNECT;
         }
         conn->write_time = time(NULL);
@@ -657,11 +656,23 @@ int HTTP2_decode(HTTP2_CONNECTION *conn, char *error){
         return HTTP2_RET_ERR_DECODE;
     }
     
-
     printf("[%d], ", conn->frame_recv->streamID);
     switch( conn->frame_recv->type ){
         case HTTP2_FRAME_DATA:
             printf("Obtained HTTP2_FRAME_DATA Frame\n");
+            if( conn->frame_recv->data_playload != NULL && conn->frame_recv->data_playload->data != NULL){
+                HTTP2_BUFFER *data = (HTTP2_BUFFER*) conn->frame_recv->data_playload->data;
+                //TODO: reallocate memory here
+                if( conn->usr_data == NULL ){ 
+                    ALLOCATE_BUFFER( conn->usr_data, data->len );
+                    conn->usr_data->cur = 0;
+                    conn->usr_data->len = 0;
+                }else{
+                    ALLOCATE_BUFFER( conn->usr_data, data->len );
+                }
+                memcpy(conn->usr_data->data + conn->usr_data->len, data->data, data->len);
+                conn->usr_data->len += data->len;
+            }
             break;
         case HTTP2_FRAME_HEADES:
             printf("Obtained HTTP2_FRAME_HEADES Frame\n");
@@ -862,44 +873,46 @@ int HTTP2_send_message(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, HTTP2_BUFFER *hea
     
     
     /**** Create DATA frame ****/
-    //write length  3 bytes
-    if( HTTP2_insert_length(data->len+5, 3, &conn->w_buffer->data[conn->w_buffer->len]) != HTTP2_RET_OK ){// 5 = size of delimiter message
-        if(error != NULL) sprintf(error, "HTTP2_insert_length return error");
-        return HTTP2_RET_ERR_ENCODE;
+    if(data->len > 0){
+        //write length  3 bytes
+        if( HTTP2_insert_length(data->len+5, 3, &conn->w_buffer->data[conn->w_buffer->len]) != HTTP2_RET_OK ){// 5 = size of delimiter message
+            if(error != NULL) sprintf(error, "HTTP2_insert_length return error");
+            return HTTP2_RET_ERR_ENCODE;
+        }
+        conn->w_buffer->len += 3;
+        
+        
+        //write type    1 byte
+        conn->w_buffer->data[conn->w_buffer->len] = 0;
+        conn->w_buffer->len += 1;
+        
+        //write flag    1 byte
+        conn->w_buffer->data[conn->w_buffer->len] = 1;
+        conn->w_buffer->len += 1;
+        
+        //write stream  4 bytes;
+        if( HTTP2_insert_length(conn->streamID, 4, &conn->w_buffer->data[conn->w_buffer->len]) != HTTP2_RET_OK ){
+            if(error != NULL) sprintf(error, "HTTP2_insert_length return error");
+            return HTTP2_RET_ERR_ENCODE;
+        }
+        conn->w_buffer->len += 4;
+        
+        //write compress flag   1 bytes
+        conn->w_buffer->data[conn->w_buffer->len] = 0;
+        conn->w_buffer->len += 1;
+        
+        //write message length  4 bytes
+        if( HTTP2_insert_length(data->len, 4, &conn->w_buffer->data[conn->w_buffer->len]) != HTTP2_RET_OK ){
+            if(error != NULL) sprintf(error, "HTTP2_insert_length return error");
+            return HTTP2_RET_ERR_ENCODE;
+        }
+        conn->w_buffer->len += 4;
+        
+        //write data
+        memcpy(&conn->w_buffer->data[conn->w_buffer->len], data->data, data->len );
+        conn->w_buffer->len += data->len;
     }
-    conn->w_buffer->len += 3;
     
-    
-    //write type    1 byte
-    conn->w_buffer->data[conn->w_buffer->len] = 0;
-    conn->w_buffer->len += 1;
-    
-    //write flag    1 byte
-    conn->w_buffer->data[conn->w_buffer->len] = 1;
-    conn->w_buffer->len += 1;
-    
-    //write stream  4 bytes;
-    if( HTTP2_insert_length(conn->streamID, 4, &conn->w_buffer->data[conn->w_buffer->len]) != HTTP2_RET_OK ){
-        if(error != NULL) sprintf(error, "HTTP2_insert_length return error");
-        return HTTP2_RET_ERR_ENCODE;
-    }
-    conn->w_buffer->len += 4;
-    
-    //write compress flag   1 bytes
-    conn->w_buffer->data[conn->w_buffer->len] = 0;
-    conn->w_buffer->len += 1;
-    
-    //write message length  4 bytes
-    if( HTTP2_insert_length(data->len, 4, &conn->w_buffer->data[conn->w_buffer->len]) != HTTP2_RET_OK ){
-        if(error != NULL) sprintf(error, "HTTP2_insert_length return error");
-        return HTTP2_RET_ERR_ENCODE;
-    }
-    conn->w_buffer->len += 4;
-    
-    //write data
-    memcpy(&conn->w_buffer->data[conn->w_buffer->len], data->data, data->len );
-    conn->w_buffer->len += data->len;
-
     conn->streamID  += 2;
         
     return HTTP2_RET_OK;

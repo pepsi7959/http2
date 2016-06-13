@@ -109,7 +109,7 @@ typedef struct _connection_t{
     
     DYNAMIC_TABLE           *enc;
     DYNAMIC_TABLE           *dec;
-    
+    HTTP2_BUFFER            *usr_data;
     HTTP2_FRAME_FORMAT      *frame_recv;
 }HTTP2_CONNECTION;
 
