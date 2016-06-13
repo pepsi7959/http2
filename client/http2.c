@@ -245,9 +245,11 @@ int HTTP2_open(HTTP2_HOST *hc, HTTP2_CONNECTION **hconn, char *error){
         sprintf(error, "HTTP2_HOST* is empty");
         return HTTP2_RET_INVALID_PARAMETER;
     }
-
-    if (hc->connection_count >= hc->max_connection){
-        sprintf(error, "HTTP2 connection exceeds[%d:%d]",hc->connection_count, hc->max_connection);
+    
+    addr = HTTP2_get_addr(hc);
+    
+    if (addr->connection_count >= addr->max_connection){
+        sprintf(error, "HTTP2 connection exceeds[%d:%d]",addr->connection_count, addr->max_connection);
         return HTTP2_RET_UNAVAILABLE;
     }
 
@@ -255,7 +257,6 @@ int HTTP2_open(HTTP2_HOST *hc, HTTP2_CONNECTION **hconn, char *error){
     hints.ai_family = PF_INET;
     hints.ai_socktype = SOCK_STREAM;
     
-    addr = HTTP2_get_addr(hc);
     if(addr == NULL){
         sprintf(error, "HTTP_get_addr return error");
         return HTTP2_RET_UNAVAILABLE;
@@ -347,7 +348,7 @@ int HTTP2_open(HTTP2_HOST *hc, HTTP2_CONNECTION **hconn, char *error){
     conn->prev              = NULL;
     conn->next              = NULL;
     conn->streamID          = 1;
-    conn->info              = NULL;
+    conn->addr_info         = addr;
     conn->usr_data          = NULL;
     conn->enc               = malloc(sizeof(DYNAMIC_TABLE));
     conn->dec               = malloc(sizeof(DYNAMIC_TABLE));
@@ -368,6 +369,7 @@ int HTTP2_open(HTTP2_HOST *hc, HTTP2_CONNECTION **hconn, char *error){
 
     LINKEDLIST_APPEND(hc->wait_queue, conn);
     ++(hc->connection_count);
+    ++(addr->connection_count);
 
     if (hconn!=NULL) *hconn = conn;
     return HTTP2_RET_OK;
@@ -603,6 +605,7 @@ int HTTP2_close(HTTP2_HOST *hc, int no, char *error){
         LINKEDLIST_REMOVE(hc->wait_queue, conn);
     }
     --(hc->connection_count);
+    --(conn->addr_info->connection_count);
 
     if (conn->w_buffer != NULL)
     {

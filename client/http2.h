@@ -44,7 +44,7 @@ typedef struct _clnt_addr_t{
     struct _clnt_addr_t *prev;
     char  host[HTTP2_MAX_STRING_HOST];
 
-    char  group[256];     //D21, D20, D11
+    char  group[256];                   // D21, D20 and D11
     char  cluster_name[256];   
     char  node_name[256];
     
@@ -115,7 +115,7 @@ typedef struct _connection_t{
     int                     streamID;
     int                     state;
     
-    void                    *info;
+    HTTP2_CLNT_ADDR         *addr_info;
     DYNAMIC_TABLE           *enc;
     DYNAMIC_TABLE           *dec;
     HTTP2_BUFFER            *usr_data;
