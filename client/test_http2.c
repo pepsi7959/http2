@@ -1110,7 +1110,9 @@ int test_GRPC_get_etcd_range_request(){
     addr->port              = 4101;
     addr->next              = NULL;
     addr->prev              = NULL;
-    strcpy(addr->host, "10.252.169.15");
+  	addr->max_connection	= 10; 
+ 	strcpy(addr->host, "10.252.169.15");
+	
     
     LINKEDLIST_APPEND(hc->list_addr, addr);
     
@@ -1242,7 +1244,7 @@ int test_GRPC_get_etcd_range_request(){
 }
 
 void test_all(){
-	UNIT_TEST(test_HTTP2_open());
+    UNIT_TEST(test_HTTP2_open());
     /*UNIT_TEST(test_HTTP2_write());
     UNIT_TEST(test_HTTP2_decode());
     UNIT_TEST(test_grpc());

@@ -483,7 +483,7 @@ int test_GRPC_get_etcd_range_request(){
 
 int test_GRPC_get_etcd_range_response(){
     unsigned char data[] = {
-0x0a,0x1a,0x08,0x8e,0x8b,0xba,0xcd,0xa5,0xd5,0x9c,0xab
+ 0x00,0x00,0x00,0x3e,0x71,0x0a,0x1a,0x08,0x8e,0x8b,0xba,0xcd,0xa5,0xd5,0x9c,0xab
 ,0x1d,0x10,0x93,0xbc,0xfe,0xfd,0x95,0xd7,0xf7,0xb4,0x29,0x18,0xcb,0x0a,0x20,0xfc
 ,0x01,0x12,0xea,0x10,0x0a,0x3e,0x64,0x61,0x6d,0x6f,0x63,0x6c,0x65,0x73,0x5f,0x64
 ,0x32,0x31,0x5f,0x63,0x6c,0x75,0x73,0x74,0x65,0x72,0x5f,0x32,0x62,0x32,0x35,0x39
@@ -1484,7 +1484,6 @@ int test_GRPC_get_etcd_range_response(){
 ,0x61,0x33,0x34,0x62,0x65,0x5f,0x73,0x74,0x61,0x74,0x75,0x73,0x10,0x3f,0x18,0xbb
 ,0x0a,0x20,0x41,0x2a,0x02,0x75,0x70};
     char error[1024];
-    Etcdserverpb__RangeResponse *res    = NULL;
     GRPC_BUFFER *buffer                 = NULL;
     buffer = calloc(1, sizeof(GRPC_BUFFER) +  1024*128);
     buffer->size    = 1024*128;
@@ -1493,15 +1492,67 @@ int test_GRPC_get_etcd_range_response(){
     
     memcpy(buffer->data, data, (int)sizeof(data)); 
     buffer->len = (int)sizeof(data);
-    ASSERT( GRPC_get_etcd_range_response(buffer, &res, error) == GRPC_RET_OK );
-    DEBUG( "Number of key : %d", (int)res->n_kvs );
-    int i = 0;
-    for(i = 0; i < res->n_kvs ; i++){
-        if( res->kvs[i]->has_key ){
-            DEBUG( "key : %s", res->kvs[i]->key.data );
-        }
-    }
-    return TEST_RESULT_SUCCESSED;
+    ATTRLIST *alist = NULL; 
+    ASSERT( GRPC_get_etcd_range_response(buffer, &alist, error) == GRPC_RET_OK );
+    ATTRLIST *tmp_alist = alist;
+
+	while(tmp_alist){
+		tmp_alist = tmp_alist->next;
+		printf("key: %s\n", tmp_alist->name);
+		if( tmp_alist->vals && tmp_alist->vals->value){
+			//printf("value: %s\n", tmp_alist->vals->value);
+			add_connection(tmp_alist->name, tmp_alist->vals->value);	
+		}
+		if( tmp_alist == alist ){
+			break;	
+		}	
+	} 
+   return TEST_RESULT_SUCCESSED;
+}
+
+
+
+int add_connection( char *key, char *value){
+
+#define has_next(_ch) do{		\
+	p = pp;					\
+	pp = strchr(p, _ch);	\
+	if (pp == NULL)  break;	\
+	memcpy(b, p, pp-p);		\
+	b[pp-p]	 = 0;			\
+	pp++;					\
+}while(0)
+	char *p   = NULL;	
+	char *pp  = NULL;
+	char b[1024];
+
+	pp = strchr(key, '_'); // Ignore damocles key
+	pp++; // Skipe '_'
+
+	has_next('_');
+	printf("Process :%s\n", b);		
+	has_next('_');
+	has_next('_');
+	printf("cluster :%s\n", b);		
+	has_next('_');
+	has_next('_');
+	printf("node :%s\n", b);		
+
+	pp = strstr(value, "\"grpcAddr\"");	
+ 	if( pp == NULL){return -2;}
+	pp += 18; // sizeof  "\"grpAddr\":\"tcp://"
+	has_next(':');
+	printf("Host :%s\n", b);
+	has_next('"');
+	printf("Port :%s\n", b);
+	
+	return 0;
+}
+
+int test_add_connection(){
+	ASSERT( add_connection(	"damocles_d21_cluster_2b259be2d83dd4b8_node_1795fe87a90d53c_cfg",
+							"\"slapdDistDir\":\"openldap-dist\",\"grpcAddr\":\"tcp://10.252.169.14:6052\",\"aliasResolver\"") == 0 );	
+	return TEST_RESULT_SUCCESSED;
 }
 void test_all(){
     /* UNIT_TEST(test_helloworld());
@@ -1513,8 +1564,9 @@ void test_all(){
     UNIT_TEST(test_GRPC_get_reqsponse());
     UNIT_TEST(test_GRPC_get_ldap_reqsponse());
     UNIT_TEST(test_GRPC_gen_entry_ldap()); */
-    UNIT_TEST(test_GRPC_get_etcd_range_request());
+    //UNIT_TEST(test_GRPC_get_etcd_range_request());
     UNIT_TEST(test_GRPC_get_etcd_range_response());
+    UNIT_TEST(test_add_connection());
 }
 
 int main(){
