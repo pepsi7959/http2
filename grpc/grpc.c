@@ -602,14 +602,14 @@ int GRPC_get_etcd_range_response(GRPC_BUFFER *buffer, ATTRLIST **alist, char *er
     VALLIST* attr_v  = NULL;
     for(i = 0; i < res->n_kvs ; i++){
         if( res->kvs[i]->has_key ){
-            if( strstr(res->kvs[i]->key.data, "_grpc-addr") != NULL ){
+            if( strstr(res->kvs[i]->key.data, "cfg") != NULL || strstr(res->kvs[i]->key.data, "stat")){
                 attr_n = calloc(1, sizeof(ATTRLIST));
                 attr_n->next = NULL;
                 attr_n->prev = NULL;
                 memcpy(attr_n->name, res->kvs[i]->key.data, res->kvs[i]->key.len);
                 attr_n->len = res->kvs[i]->key.len;
                 attr_n->name[res->kvs[i]->key.len] = 0;
-                printf( "key : %s\n", attr_n->name );
+                //printf( "key : %s\n", attr_n->name );
                 
                 if( res->kvs[i]->has_value ){
                     attr_v = calloc(1, sizeof(VALLIST));
@@ -618,7 +618,7 @@ int GRPC_get_etcd_range_response(GRPC_BUFFER *buffer, ATTRLIST **alist, char *er
                     memcpy(attr_v->value, res->kvs[i]->value.data, res->kvs[i]->value.len);
                     attr_v->len = res->kvs[i]->value.len;
                     attr_v->value[res->kvs[i]->value.len] = 0;
-                    printf( "value: %s\n", attr_v->value);
+                    //printf( "value: %s\n", attr_v->value);
                     LINKEDLIST_APPEND(attr_n->vals, attr_v);
                 }
                 LINKEDLIST_APPEND((*alist), attr_n);

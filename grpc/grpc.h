@@ -6,7 +6,7 @@
 
 
 #define MAX_ATTRIBUTE_VALUES    16
-#define MAX_ATTR_NAME_SIZE      1024    //!-- DO NOT change value
+#define MAX_ATTR_NAME_SIZE      256     //!-- DO NOT change value
 #define MAX_ATTR_VALUE_SIZE     8192    //!-- DO NOT change value
 typedef struct _buffer_t GRPC_BUFFER;
 
