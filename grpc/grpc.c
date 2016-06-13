@@ -602,7 +602,7 @@ int GRPC_get_etcd_range_response(GRPC_BUFFER *buffer, ATTRLIST **alist, char *er
     VALLIST* attr_v  = NULL;
     for(i = 0; i < res->n_kvs ; i++){
         if( res->kvs[i]->has_key ){
-            if( strstr(res->kvs[i]->key.data, "cfg") != NULL || strstr(res->kvs[i]->key.data, "stat")){
+            if( strstr((char *)res->kvs[i]->key.data, "cfg") != NULL || strstr((char *)res->kvs[i]->key.data, "stat")){
                 attr_n = calloc(1, sizeof(ATTRLIST));
                 attr_n->next = NULL;
                 attr_n->prev = NULL;
