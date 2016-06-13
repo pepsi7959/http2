@@ -94,15 +94,18 @@ int HTTP2_playload_decode(HTTP2_FRAME_BUFFER *buffer, HTTP2_FRAME_FORMAT *frame,
             playload->padding_length        = 0;
             playload->data                  = NULL;
             playload->padding               = NULL;
-            playload->padding_length        = (int)buffer->data[buffer->cur];
-             
-            int len                         = (frame->length - playload->padding_length) -1 ; //data length
+            
+            if(frame->flags & 0x8 ){
+                playload->padding_length    = (int)buffer->data[buffer->cur];
+            }
+            
+            int len                         = (frame->length - playload->padding_length); //data length
             HTTP2_FRAME_BUFFER *data              = NULL;
             data                            = (HTTP2_FRAME_BUFFER *)malloc( sizeof(HTTP2_FRAME_BUFFER) +  len );
             data->len                       = len;
-            data->cur                       = 4;
+            //data->cur                       = 4;
             
-            buffer->cur                     += 1 ; //skip padding length
+            //buffer->cur                     += 1 ; //skip padding length
             memcpy(data->data, buffer->data + buffer->cur, len);
             buffer->cur += len;
             playload->data = (void*)data;
@@ -224,17 +227,17 @@ int HTTP2_frame_decode(HTTP2_FRAME_BUFFER *buffer, HTTP2_FRAME_FORMAT **frame, c
         if( error != NULL){sprintf(error, "Need more data to decode playload (frame len=%d,buff len=%d)", nframe->length, buffer->len);}
         return HTTP2_RETURN_NEED_MORE_DATA;
     }
-    buffer->cur += 3;
+    buffer->cur += 3; // skipe frame size
     tmp_uint = 0;
     
     READBYTE(buffer->data, buffer->cur, 1, tmp_uint);
     nframe->type     = (int)tmp_uint;
-    buffer->cur += 1;
+    buffer->cur += 1; // skipe frame type
     tmp_uint = 0;
     
     READBYTE(buffer->data, buffer->cur, 1, tmp_uint);
     nframe->flags     = (int)tmp_uint;
-    buffer->cur += 1;
+    buffer->cur += 1; // skipe flag
     tmp_uint = 0;
     
     READBYTE(buffer->data, buffer->cur, 1, tmp_uint);
@@ -243,7 +246,7 @@ int HTTP2_frame_decode(HTTP2_FRAME_BUFFER *buffer, HTTP2_FRAME_FORMAT **frame, c
     
     READBYTE(buffer->data, buffer->cur, 4, tmp_uint);
     nframe->streamID = (tmp_uint & 0x7FFFFFFF);
-    buffer->cur += 4;
+    buffer->cur += 4; // skip stream ID
     tmp_uint = 0;
     
 
