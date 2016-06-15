@@ -55,7 +55,11 @@ static int HTTP2_alloc_buffer(HTTP2_BUFFER **data, int len){
 }
 
 static HTTP2_CLNT_ADDR *HTTP2_get_addr(HTTP2_HOST *hc){
-    return hc->list_addr;
+    HTTP2_CLNT_ADDR *addr = hc->list_addr;
+    //Round-Robin
+    LINKEDLIST_REMOVE(hc->list_addr, addr);
+    LINKEDLIST_APPEND(hc->list_addr, addr);
+    return addr;
 }
 
 static int HTTP2_write_direct(HTTP2_CONNECTION *conn, char *error){
@@ -956,7 +960,7 @@ int HTTP2_addr_add(HTTP2_HOST *hc, char *host, int port, int max_connection, cha
         return HTTP2_RET_INVALID_PARAMETER;
     }
     
-    HTTP2_CLNT_ADDR *addr   = (HTTP2_CLNT_ADDR*)malloc(sizeof(HTTP2_CLNT_ADDR));
+    HTTP2_CLNT_ADDR *addr   = (HTTP2_CLNT_ADDR*)calloc(1, sizeof(HTTP2_CLNT_ADDR));
     if( addr == NULL ){
         if( error != NULL ) sprintf(error, "Cannot allocate memory to HTTP2_CLNT_ADDR*"); 
             return HTTP2_RET_ERR_MEMORY;
@@ -965,6 +969,7 @@ int HTTP2_addr_add(HTTP2_HOST *hc, char *host, int port, int max_connection, cha
     addr->next              = NULL;
     addr->prev              = NULL;
     addr->max_connection    = max_connection;
+    addr->connection_count  = 0;
     strcpy(addr->host, host);
     
     hc->list_addr_count++;
@@ -979,7 +984,7 @@ int HTTP2_addr_add_by_cluster(HTTP2_HOST *hc, char *host, int port, int max_conn
         return HTTP2_RET_INVALID_PARAMETER;
     }
     
-    HTTP2_CLNT_ADDR *addr   = (HTTP2_CLNT_ADDR*)malloc(sizeof(HTTP2_CLNT_ADDR));
+    HTTP2_CLNT_ADDR *addr   = (HTTP2_CLNT_ADDR*)calloc(1, sizeof(HTTP2_CLNT_ADDR));
     if( addr == NULL ){
         if( error != NULL ) sprintf(error, "Cannot allocate memory to HTTP2_CLNT_ADDR*"); 
             return HTTP2_RET_ERR_MEMORY;
@@ -990,6 +995,8 @@ int HTTP2_addr_add_by_cluster(HTTP2_HOST *hc, char *host, int port, int max_conn
     addr->cluster_id        = cluster_id;
     addr->node_id           = node_id;
     addr->max_connection    = max_connection;
+    addr->connection_count  = 0;
+    
     strcpy(addr->host, host);
     
     if( group != NULL ){

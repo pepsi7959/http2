@@ -655,10 +655,11 @@ int test_HTTP2_send_message(){
     strcat(hc->name,"D21");
 
     HTTP2_CLNT_ADDR *addr   = (HTTP2_CLNT_ADDR*)malloc(sizeof(HTTP2_CLNT_ADDR));
-    addr->port              = 7051;
+    addr->port              = 6051;
     addr->next              = NULL;
     addr->prev              = NULL;
-    strcpy(addr->host, "10.252.169.12");
+    addr->max_connection    = 1;
+    strcpy(addr->host, "127.0.0.1");
     
     LINKEDLIST_APPEND(hc->list_addr, addr);
     
@@ -724,7 +725,7 @@ int test_HTTP2_send_message(){
     unsigned int tid = 0;
     HTTP2_BUFFER *buffer = NULL;
     if( conn->frame_recv->type == HTTP2_FRAME_DATA){
-        ASSERT( GRPC_get_reqsponse(&tid, &buffer, conn->frame_recv->data_playload->data, error) == GRPC_RET_OK);
+        ASSERT( GRPC_get_reqsponse(&tid, &buffer, conn->usr_data, error) == GRPC_RET_OK);
     }
 
     ASSERT( HTTP2_write(conn , error) == HTTP2_RET_SENT );
@@ -738,11 +739,11 @@ int test_HTTP2_send_message(){
             if( conn->frame_recv->type == HTTP2_FRAME_DATA){
                 HTTP2_BUFFER *x = (HTTP2_BUFFER*)conn->frame_recv->data_playload->data;
                 HEXDUMP(x->data, x->len);
-                ASSERT( GRPC_get_reqsponse(&tid, &buffer, conn->frame_recv->data_playload->data, error) == GRPC_RET_OK);
+                ASSERT( GRPC_get_reqsponse(&tid, &buffer, conn->usr_data, error) == GRPC_RET_OK);
                 DEBUG("data [%s] tid[%u]\n", buffer->data, tid);
             }
         }
-/*     
+     
         hb->len = 0;
         ASSERT( HTTP2_write_header(conn, &hb, &hf1, error) == HTTP2_RET_OK);
         ASSERT( HTTP2_write_header(conn, &hb, &hf2, error) == HTTP2_RET_OK);
@@ -759,7 +760,7 @@ int test_HTTP2_send_message(){
         ASSERT( GRPC_gen_search_request(0x123, &data,"subdata=profile,ds=gup,subdata=services,UID=000000000000002,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
         HTTP2_send_message(hc, conn, hb, data, error);
         HTTP2_write(conn , error);
-        
+        /*
         //Delete
         data->len = 0;
         ASSERT( GRPC_gen_delete_request(0x123, &data,"uid=000000000000002,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", 0, error) == GRPC_RET_OK);
@@ -1244,7 +1245,7 @@ int test_GRPC_get_etcd_range_request(){
 }
 
 void test_all(){
-    UNIT_TEST(test_HTTP2_open());
+    //UNIT_TEST(test_HTTP2_open());
     /*UNIT_TEST(test_HTTP2_write());
     UNIT_TEST(test_HTTP2_decode());
     UNIT_TEST(test_grpc());
