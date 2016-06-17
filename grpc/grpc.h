@@ -52,7 +52,8 @@ typedef struct _attr_list_t ATTRLIST;
 
 enum GRPC_SERVICE{
     GRPC_SERVICE_DO = 1,
-    GRCP_RESOLVE_ALIASE ,
+    GRPC_RESOLVE_ALIASE,
+    GRPC_ETCD_RANGE_REQUEST,
 };
 
 int GRPC_send_request(GRPC_BUFFER *buffer);

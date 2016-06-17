@@ -339,11 +339,11 @@ int GRPC_gen_search_request(unsigned int tid, GRPC_BUFFER **buffer, const char *
         return GRPC_RET_UNIMPLEMENT;
     }
     
-    if( pb__request__pack(req, (*buffer)->data) != len ){
+    if( pb__request__pack(req, (*buffer)->data+((*buffer)->len)) != len ){
         if( error != NULL ) sprintf(error, "pb__request__pack return invalid length");
         return GRPC_RET_INVALID_LENGTH;
     }
-    (*buffer)->len = len;
+    (*buffer)->len += len;
     
     return GRPC_RET_OK;
 
@@ -363,6 +363,7 @@ int GRPC_get_reqsponse(unsigned int *tid, GRPC_BUFFER **json_response , GRPC_BUF
     
     GRPC_BUFFER *buf        = NULL;
     Pb__Response *response  = NULL;
+    int tmp_int             = 0;
     int blen                = 0;
     
     if( data == NULL ){
@@ -370,6 +371,16 @@ int GRPC_get_reqsponse(unsigned int *tid, GRPC_BUFFER **json_response , GRPC_BUF
         return GRPC_RET_INVALID_PARAMETER;
     }
     
+    READBYTE(data->data, data->cur+1, 4, tmp_int); //1 is skiping encoding flage, 3 is number of size.
+    printf("[%d] > [%d]\n", tmp_int, data->len);
+    if( tmp_int > data->len){
+        
+        printf("Need more data to unpack [%d] > [%d]\n", tmp_int, data->len);
+        return GRPC_RET_NEED_MORE_DATA;
+    }
+    
+    data->cur += 5;//skipe encode flage and size
+        
     if( json_response == NULL ){
         if( error != NULL ) sprintf(error, "**json_response is NULL");
         return GRPC_RET_INVALID_PARAMETER;
@@ -430,6 +441,13 @@ int GRPC_get_reqsponse(unsigned int *tid, GRPC_BUFFER **json_response , GRPC_BUF
     blen += sprintf((char *)(buf->data + blen), "}");
     buf->len = blen;
     
+    data->cur += tmp_int;
+    memmove(data->data, data->data+data->cur, data->len-data->cur);
+    data->len = data->len-data->cur;
+    data->cur = 0;
+    
+    pb__response__free_unpacked(response, NULL);
+    
     return GRPC_RET_OK;
 }
 
@@ -438,12 +456,23 @@ int GRPC_get_ldap_reqsponse(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *
     LDAP_RESULT *result     = NULL;
     Pb__Response *response  = NULL;
     int blen                = 0;
+    int tmp_int             = 0;
     GRPC_BUFFER* buf        = NULL;
 
     if( data == NULL ){
         if( error != NULL ) sprintf(error, "*data is NULL");
         return GRPC_RET_INVALID_PARAMETER;
     }
+    
+    READBYTE(data->data, data->cur+1, 4, tmp_int); //1 is skiping encoding flage, 3 is number of size.
+    printf("[%d] > [%d]\n", tmp_int, data->len);
+    if( tmp_int > data->len){
+        
+        printf("Need more data to unpack [%d] > [%d]\n", tmp_int, data->len);
+        return GRPC_RET_NEED_MORE_DATA;
+    }
+    
+    data->cur += 5;//skipe encode flage and size
     
     if( ldap_result == NULL ){
         if( error != NULL ) sprintf(error, "**LDAP_RESULT is NULL");
@@ -463,7 +492,7 @@ int GRPC_get_ldap_reqsponse(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *
         if( error != NULL ) sprintf(error, "pb__response__unpack return error");
         return GRPC_RET_ERR_UNPACK;
     }
-
+    
     result->tid = (response->has_id)?response->id:-1;
     result->result_code = (response->has_resultcode)?response->resultcode:0;
     
@@ -515,7 +544,14 @@ int GRPC_get_ldap_reqsponse(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *
     
     blen += sprintf((char *)(buf->data + blen), "}");
     buf->len = blen;
-        
+    
+    data->cur += tmp_int;
+    memmove(data->data, data->data+data->cur, data->len-data->cur);
+    data->len = data->len-data->cur;
+    data->cur = 0;
+    
+    pb__response__free_unpacked(response, NULL);
+    
     return GRPC_RET_OK;
 }
 
@@ -567,6 +603,35 @@ int GRPC_get_etcd_range_request(GRPC_BUFFER **buffer, unsigned char *prefix, int
     return GRPC_RET_OK;
 }
 
+
+/*
+ * Find the first occurrence of find in s, where the search is limited to the
+ * first slen characters of s.
+ */
+char *
+strnstr(s, find, slen)
+	const char *s;
+	const char *find;
+	size_t slen;
+{
+	char c, sc;
+	size_t len;
+
+	if ((c = *find++) != '\0') {
+		len = strlen(find);
+		do {
+			do {
+				if (slen-- < 1 || (sc = *s++) == '\0')
+					return (NULL);
+			} while (sc != c);
+			if (len > slen)
+				return (NULL);
+		} while (strncmp(s, find, len) != 0);
+		s--;
+	}
+	return ((char *)s);
+}
+
 int GRPC_get_etcd_range_response(GRPC_BUFFER *buffer, ATTRLIST **alist, char *error){
     int tmp_int = 0;
     int i       = 0;
@@ -602,7 +667,8 @@ int GRPC_get_etcd_range_response(GRPC_BUFFER *buffer, ATTRLIST **alist, char *er
     VALLIST* attr_v  = NULL;
     for(i = 0; i < res->n_kvs ; i++){
         if( res->kvs[i]->has_key ){
-            if( strstr((char *)res->kvs[i]->key.data, "cfg") != NULL || strstr((char *)res->kvs[i]->key.data, "stat")){
+            if( strnstr ((char *)&res->kvs[i]->key.data[0], "cfg", res->kvs[i]->key.len) != NULL 
+            || strnstr((char *)&res->kvs[i]->key.data[0], "stat", res->kvs[i]->key.len) != NULL){
                 attr_n = calloc(1, sizeof(ATTRLIST));
                 attr_n->next = NULL;
                 attr_n->prev = NULL;
@@ -625,6 +691,13 @@ int GRPC_get_etcd_range_response(GRPC_BUFFER *buffer, ATTRLIST **alist, char *er
             }
         }
     }
+    
+    buffer->cur += tmp_int;
+    memmove(buffer->data, buffer->data+buffer->cur, buffer->len-buffer->cur);
+    buffer->len = buffer->len-buffer->cur;
+    buffer->cur = 0;
+    
+    etcdserverpb__range_response__free_unpacked(res, NULL);
     
     return GRPC_RET_OK;
 }
