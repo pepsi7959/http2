@@ -7,6 +7,17 @@
 #include "d21.pb-c.h"
 #include "grpc.h"
 
+int insert_length(unsigned int len, int nlen, unsigned char *data){
+    int i = 0;
+    for (; i < nlen-1; i++){
+        data[i] = (unsigned char)((len >> 8*(nlen-1-i)));
+    }
+    data[i] = (unsigned char)(len);
+    
+    return 0;
+}
+
+
 void HEXDUMP(unsigned char *buff, int size){
 	static char hex[] = {'0','1','2','3','4','5','6','7',
 								'8','9','a','b','c','d','e','f'};
@@ -242,11 +253,13 @@ int test_GRPC_gen_search_request(){
     buffer->size            = 2048;
     buffer->data[0]         = 0;
     error[0]                = 0;
-    
+
     ASSERT( GRPC_gen_search_request(0x01, &buffer, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK );
     ASSERT( buffer->len >= 0);
-
+    HEXDUMP(buffer->data, buffer->len);
+    
     decode_req  = pb__request__unpack(NULL, buffer->len, (void*)buffer->data);
+        
     ASSERT(decode_req != NULL);
     ASSERT(decode_req->id == 0x01);
     ASSERT(decode_req->scope == PB__SEARCH_SCOPE__BaseObject);
@@ -295,6 +308,8 @@ int test_GRPC_gen_modify_entry(){
     return TEST_RESULT_SUCCESSED;
 }
 
+
+
 int test_GRPC_get_reqsponse(){
     unsigned int tid    = 0;
     GRPC_BUFFER* buffer = NULL;
@@ -326,6 +341,7 @@ int test_GRPC_get_reqsponse(){
     return TEST_RESULT_SUCCESSED;
 }
 
+
 int test_GRPC_get_ldap_reqsponse(){
     LDAP_RESULT *result = NULL;
     Pb__Response res  = PB__RESPONSE__INIT;
@@ -341,12 +357,16 @@ int test_GRPC_get_ldap_reqsponse(){
     res.n_referrals     = 0;
     res.referrals       = NULL;
     
-    int len = pb__response__get_packed_size(&res);
+    unsigned int len = pb__response__get_packed_size(&res);
     GRPC_BUFFER *data = NULL;//malloc(sizeof(GRPC_BUFFER)+sizeof(char)*len);
-    ALLOCATE_BUFFER(data, (sizeof(GRPC_BUFFER)+sizeof(char)*len));
+    ALLOCATE_BUFFER(data, (sizeof(GRPC_BUFFER)+sizeof(char)*len+5));
     memset(data, 0, sizeof(GRPC_BUFFER));
-    ASSERT( pb__response__pack(&res, data->data) == len );
-    data->len = len;
+    ASSERT( pb__response__pack(&res, data->data+5) == len );
+    data->data[0] = 0;
+    data->len = len+5;
+    insert_length(len, 4, &data->data[1]);
+    HEXDUMP(data->data, 5);
+    
     ASSERT( GRPC_get_ldap_reqsponse(&result, data, error) == GRPC_RET_OK);
     DEBUG("tid : %u, res.id : %lu\n", result->tid, res.id);
     ASSERT( result->tid == res.id );
@@ -479,6 +499,44 @@ int test_GRPC_get_etcd_range_request(){
     ASSERT( req->serializable     == 0 );
     
     return TEST_RESULT_SUCCESSED;
+}
+
+
+int add_connection( char *key, char *value){
+
+#define has_next(_ch) do{		\
+	p = pp;					\
+	pp = strchr(p, _ch);	\
+	if (pp == NULL)  break;	\
+	memcpy(b, p, pp-p);		\
+	b[pp-p]	 = 0;			\
+	pp++;					\
+}while(0)
+	char *p   = NULL;	
+	char *pp  = NULL;
+	char b[1024];
+
+	pp = strchr(key, '_'); // Ignore damocles key
+	pp++; // Skipe '_'
+
+	has_next('_');
+	printf("Process :%s\n", b);		
+	has_next('_');
+	has_next('_');
+	printf("cluster :%s\n", b);		
+	has_next('_');
+	has_next('_');
+	printf("node :%s\n", b);		
+
+	pp = strstr(value, "\"grpcAddr\"");	
+ 	if( pp == NULL){return -2;}
+	pp += 18; // sizeof  "\"grpAddr\":\"tcp://"
+	has_next(':');
+	printf("Host :%s\n", b);
+	has_next('"');
+	printf("Port :%s\n", b);
+	
+	return 0;
 }
 
 int test_GRPC_get_etcd_range_response(){
@@ -1512,42 +1570,6 @@ int test_GRPC_get_etcd_range_response(){
 
 
 
-int add_connection( char *key, char *value){
-
-#define has_next(_ch) do{		\
-	p = pp;					\
-	pp = strchr(p, _ch);	\
-	if (pp == NULL)  break;	\
-	memcpy(b, p, pp-p);		\
-	b[pp-p]	 = 0;			\
-	pp++;					\
-}while(0)
-	char *p   = NULL;	
-	char *pp  = NULL;
-	char b[1024];
-
-	pp = strchr(key, '_'); // Ignore damocles key
-	pp++; // Skipe '_'
-
-	has_next('_');
-	printf("Process :%s\n", b);		
-	has_next('_');
-	has_next('_');
-	printf("cluster :%s\n", b);		
-	has_next('_');
-	has_next('_');
-	printf("node :%s\n", b);		
-
-	pp = strstr(value, "\"grpcAddr\"");	
- 	if( pp == NULL){return -2;}
-	pp += 18; // sizeof  "\"grpAddr\":\"tcp://"
-	has_next(':');
-	printf("Host :%s\n", b);
-	has_next('"');
-	printf("Port :%s\n", b);
-	
-	return 0;
-}
 
 int test_add_connection(){
 	ASSERT( add_connection(	"damocles_d21_cluster_2b259be2d83dd4b8_node_1795fe87a90d53c_cfg",
@@ -1558,15 +1580,17 @@ void test_all(){
     /* UNIT_TEST(test_helloworld());
     UNIT_TEST(test_Pb__Request());
     UNIT_TEST(test_Decode_from_data());
-    UNIT_TEST(test_GRPC_gen_search_request());
     UNIT_TEST(test_Pb__Response());  
     UNIT_TEST(test_GRPC_gen_entry());
     UNIT_TEST(test_GRPC_get_reqsponse());
-    UNIT_TEST(test_GRPC_get_ldap_reqsponse());
     UNIT_TEST(test_GRPC_gen_entry_ldap()); */
     //UNIT_TEST(test_GRPC_get_etcd_range_request());
+    UNIT_TEST(test_GRPC_gen_search_request());
+    UNIT_TEST(test_GRPC_get_ldap_reqsponse());
     UNIT_TEST(test_GRPC_get_etcd_range_response());
     UNIT_TEST(test_add_connection());
+    
+    
 }
 
 int main(){
