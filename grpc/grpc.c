@@ -25,6 +25,35 @@ int GRPC_get_scope(const char *scope){
     }
 }
 
+
+/*
+ * Find the first occurrence of find in s, where the search is limited to the
+ * first slen characters of s.
+ */
+char *
+strnstr(s, find, slen)
+	const char *s;
+	const char *find;
+	size_t slen;
+{
+	char c, sc;
+	size_t len;
+
+	if ((c = *find++) != '\0') {
+		len = strlen(find);
+		do {
+			do {
+				if (slen-- < 1 || (sc = *s++) == '\0')
+					return (NULL);
+			} while (sc != c);
+			if (len > slen)
+				return (NULL);
+		} while (strncmp(s, find, len) != 0);
+		s--;
+	}
+	return ((char *)s);
+}
+
 int GRPC_gen_entry(Pb__Entry **entry,char *dn, char *objectclass, char *attr[128], int attr_len, char *error){
     if( *entry == NULL ){
         printf("create New\n");
@@ -603,35 +632,6 @@ int GRPC_get_etcd_range_request(GRPC_BUFFER **buffer, unsigned char *prefix, int
     return GRPC_RET_OK;
 }
 
-
-/*
- * Find the first occurrence of find in s, where the search is limited to the
- * first slen characters of s.
- */
-char *
-strnstr(s, find, slen)
-	const char *s;
-	const char *find;
-	size_t slen;
-{
-	char c, sc;
-	size_t len;
-
-	if ((c = *find++) != '\0') {
-		len = strlen(find);
-		do {
-			do {
-				if (slen-- < 1 || (sc = *s++) == '\0')
-					return (NULL);
-			} while (sc != c);
-			if (len > slen)
-				return (NULL);
-		} while (strncmp(s, find, len) != 0);
-		s--;
-	}
-	return ((char *)s);
-}
-
 int GRPC_get_etcd_range_response(GRPC_BUFFER *buffer, ATTRLIST **alist, char *error){
     int tmp_int = 0;
     int i       = 0;
@@ -667,7 +667,7 @@ int GRPC_get_etcd_range_response(GRPC_BUFFER *buffer, ATTRLIST **alist, char *er
     VALLIST* attr_v  = NULL;
     for(i = 0; i < res->n_kvs ; i++){
         if( res->kvs[i]->has_key ){
-            if( strnstr ((char *)&res->kvs[i]->key.data[0], "cfg", res->kvs[i]->key.len) != NULL 
+            if( strnstr ((char *)&res->kvs[i]->key.data[0], "grpc-addr", res->kvs[i]->key.len) != NULL 
             || strnstr((char *)&res->kvs[i]->key.data[0], "stat", res->kvs[i]->key.len) != NULL){
                 attr_n = calloc(1, sizeof(ATTRLIST));
                 attr_n->next = NULL;
@@ -675,7 +675,7 @@ int GRPC_get_etcd_range_response(GRPC_BUFFER *buffer, ATTRLIST **alist, char *er
                 memcpy(attr_n->name, res->kvs[i]->key.data, res->kvs[i]->key.len);
                 attr_n->len = res->kvs[i]->key.len;
                 attr_n->name[res->kvs[i]->key.len] = 0;
-                //printf( "key : %s\n", attr_n->name );
+                printf( "key : %s\n", attr_n->name );
                 
                 if( res->kvs[i]->has_value ){
                     attr_v = calloc(1, sizeof(VALLIST));
@@ -699,5 +699,123 @@ int GRPC_get_etcd_range_response(GRPC_BUFFER *buffer, ATTRLIST **alist, char *er
     
     etcdserverpb__range_response__free_unpacked(res, NULL);
     
+    return GRPC_RET_OK;
+}
+
+int GRPC_get_etcd_watch_request(GRPC_BUFFER **buffer, unsigned char *prefix, int prefix_len, unsigned char *range_end , int range_end_len, char *error){
+    Etcdserverpb__WatchRequest watch_req;
+    etcdserverpb__watch_request__init(&watch_req);
+    
+    Etcdserverpb__WatchCreateRequest create_req;
+    etcdserverpb__watch_create_request__init(&create_req);
+    
+    create_req.has_key = 1;
+    create_req.key.data = prefix;
+    create_req.key.len = prefix_len;
+    
+    create_req.has_range_end = 1;
+    create_req.range_end.data = range_end;
+    create_req.range_end.len = range_end_len;
+    
+    create_req.has_start_revision = 0;
+    create_req.start_revision = 0;
+    
+    create_req.has_progress_notify = 0;
+    create_req.progress_notify = 1;
+    
+    watch_req.request_union_case = ETCDSERVERPB__WATCH_REQUEST__REQUEST_UNION_CREATE_REQUEST;
+    watch_req.create_request = &create_req;
+    
+    int len = etcdserverpb__watch_request__get_packed_size(&watch_req);
+    
+    if(*buffer == NULL){
+        *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*len);
+        (*buffer)->size    = len;
+        (*buffer)->len     = 0;
+    }
+    
+    if( len > (*buffer)->size - (*buffer)->len ){
+        //reallocate buffer
+        if( error != NULL ) sprintf(error, "Insufficient buffer!!");
+        return GRPC_RET_UNIMPLEMENT;
+    }
+    
+    if( etcdserverpb__watch_request__pack(&watch_req, (*buffer)->data) != len ){
+        if( error != NULL ) sprintf(error, "etcdserverpb__watch_request__pack return invalid length");
+        return GRPC_RET_INVALID_LENGTH;
+    }
+    
+    (*buffer)->len = len;
+    
+    return GRPC_RET_OK;
+}
+
+int GRPC_get_etcd_watch_response(GRPC_BUFFER *buffer, ATTRLIST **alist, char *error){
+int tmp_int = 0;
+    int i       = 0;
+    Etcdserverpb__WatchResponse *res = NULL;
+    
+    //Checking size 
+    if( buffer == NULL ){
+        if(error != NULL){
+            sprintf(error, "buffer is null");
+        }
+        return GRPC_RET_INVALID_PARAMETER;
+    }
+
+    READBYTE(buffer->data, buffer->cur+1, 4, tmp_int); //1 is skiping encoding flage, 3 is number of size.
+    printf("[%d] > [%d]\n", tmp_int, buffer->len);
+    if( tmp_int > buffer->len){
+        
+        printf("Need more data to unpack [%d] > [%d]\n", tmp_int, buffer->len);
+        return GRPC_RET_NEED_MORE_DATA;
+    }
+    
+    buffer->cur += 5;//skipe encode flage and size
+    
+    res = etcdserverpb__watch_response__unpack(NULL, buffer->len-buffer->cur, (void*)buffer->data+buffer->cur);
+    
+    if(res == NULL){
+        if(error != NULL){
+            sprintf(error, "etcdserverpb__watch_response__unpack return error");
+        }
+        return GRPC_RET_ERR_UNPACK;
+    }
+    ATTRLIST* attr_n = NULL;
+    VALLIST* attr_v  = NULL;
+    for(i = 0; i < res->n_events ; i++){
+        if( res->events[i]->kv->has_key ){
+            if( strnstr ((char *)&res->events[i]->kv->key.data[0], "grpc-addr", res->events[i]->kv->key.len) != NULL 
+            || strnstr((char *)&res->events[i]->kv->key.data[0], "stat", res->events[i]->kv->key.len) != NULL
+            || strnstr((char *)&res->events[i]->kv->key.data[0], "cfg", res->events[i]->kv->key.len) != NULL){
+                attr_n = calloc(1, sizeof(ATTRLIST));
+                attr_n->next = NULL;
+                attr_n->prev = NULL;
+                memcpy(attr_n->name, res->events[i]->kv->key.data, res->events[i]->kv->key.len);
+                attr_n->len = res->events[i]->kv->key.len;
+                attr_n->name[res->events[i]->kv->key.len] = 0;
+                printf( "key : %s\n", attr_n->name );
+                
+                if( res->events[i]->kv->has_value ){
+                    attr_v = calloc(1, sizeof(VALLIST));
+                    attr_v->next = NULL;
+                    attr_v->prev = NULL;
+                    memcpy(attr_v->value, res->events[i]->kv->value.data, res->events[i]->kv->value.len);
+                    attr_v->len = res->events[i]->kv->value.len;
+                    attr_v->value[res->events[i]->kv->value.len] = 0;
+                    printf( "value: %s\n", attr_v->value);
+                    LINKEDLIST_APPEND(attr_n->vals, attr_v);
+                }
+                LINKEDLIST_APPEND((*alist), attr_n);
+            }
+        }
+    }
+    
+    buffer->cur += tmp_int;
+    memmove(buffer->data, buffer->data+buffer->cur, buffer->len-buffer->cur);
+    buffer->len = buffer->len-buffer->cur;
+    buffer->cur = 0;
+    
+    etcdserverpb__watch_response__free_unpacked(res, NULL);
     return GRPC_RET_OK;
 }

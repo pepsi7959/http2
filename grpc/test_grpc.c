@@ -1812,6 +1812,23 @@ int test_add_connection(){
 							"\"slapdDistDir\":\"openldap-dist\",\"grpcAddr\":\"tcp://10.252.169.14:6052\",\"aliasResolver\"") == 0 );	
 	return TEST_RESULT_SUCCESSED;
 }
+
+int test_GRPC_get_etcd_watch_request(){
+    unsigned char data[] = {0x00,0x00,0x00,0x00,0x16,0x0a,0x14,0x0a,
+                            0x08,0x64,0x61,0x6d,0x6f,0x63,0x6c,0x65,
+                            0x73,0x12,0x08,0x64,0x61,0x6d,0x6f,0x63,
+                            0x6c,0x65,0x74};
+
+    char error[1024];
+    GRPC_BUFFER *buffer = NULL;
+    ASSERT( GRPC_get_etcd_watch_request(&buffer, "damocles", 8, "damoclet" , 8, error) == GRPC_RET_OK );
+    HEXDUMP( buffer->data, buffer->len);
+    
+    HEXDUMP( data+5, sizeof(data)-5);
+
+    return TEST_RESULT_SUCCESSED;
+}
+
 void test_all(){
     /* UNIT_TEST(test_helloworld());
     UNIT_TEST(test_Pb__Request());
@@ -1825,8 +1842,8 @@ void test_all(){
     UNIT_TEST(test_GRPC_get_ldap_reqsponse());
     UNIT_TEST(test_GRPC_get_etcd_range_response());
     UNIT_TEST(test_add_connection());
-    
-    
+    UNIT_TEST(test_GRPC_get_etcd_watch_request());
+        
 }
 
 int main(){
@@ -1834,3 +1851,4 @@ int main(){
     REPORT();
     return 0;
 }
+
