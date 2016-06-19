@@ -977,7 +977,7 @@ int HTTP2_addr_add(HTTP2_HOST *hc, char *host, int port, int max_connection, cha
     return HTTP2_RET_OK;
 }
 
-int HTTP2_addr_add_by_cluster(HTTP2_HOST *hc, char *host, int port, int max_connection, char *group, char *cluster_name, unsigned long cluster_id, char *node_name, unsigned long node_id,char *error){
+int HTTP2_addr_add_by_cluster(HTTP2_HOST *hc, char *host, int port, int max_connection, char *group, char *cluster_name, unsigned long cluster_id, char *node_name, unsigned long node_id, char *key_name, int key_len, int link_status, int state, char *error){
     if( hc == NULL ){
         if( error != NULL ) sprintf(error, "HTTP2_HOST* is NULL"); 
         return HTTP2_RET_INVALID_PARAMETER;
@@ -995,7 +995,8 @@ int HTTP2_addr_add_by_cluster(HTTP2_HOST *hc, char *host, int port, int max_conn
     addr->node_id           = node_id;
     addr->max_connection    = max_connection;
     addr->connection_count  = 0;
-    
+    addr->link_status       = link_status;
+    addr->state             = state;
     strcpy(addr->host, host);
     
     if( group != NULL ){
@@ -1008,6 +1009,10 @@ int HTTP2_addr_add_by_cluster(HTTP2_HOST *hc, char *host, int port, int max_conn
     
     if( node_name != NULL ){
         strcpy(addr->node_name, node_name);
+    }
+    
+    if( key_name != NULL ){
+        memcpy(addr->key_name, key_name, key_len);
     }
     
     hc->list_addr_count++;

@@ -39,7 +39,7 @@ int test_HTTP2_open(){
     ASSERT( strcmp(hc->name, "d21") == 0);
     ASSERT( hc->max_concurrence == HTTP2_MAX_CONCURRENCE );
     
-    ASSERT( HTTP2_addr_add_by_cluster(hc, "127.0.0.1", 6051, 10, "d21", "Cluster-1", 0xc21, "d21-1", 0x21, error) == HTTP2_RET_OK );
+    ASSERT( HTTP2_addr_add_by_cluster(hc, "127.0.0.1", 6051, 10, "d21", "Cluster-1", 0xc21, "d21-1", 0x21, "test", 4, 0, 0, error) == HTTP2_RET_OK );
     ASSERT( hc->list_addr != NULL );
     ASSERT( hc->list_addr->next == hc->list_addr);
     ASSERT( hc->list_addr->prev == hc->list_addr);

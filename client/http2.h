@@ -161,7 +161,7 @@ extern HTTP2_HOST *HTTP2_HOSTS[];
 
 int HTTP2_host_create(HTTP2_HOST **hc, char *name, int max_connection, char *error);
 int HTTP2_addr_add(HTTP2_HOST *hc, char *host, int port, int max_connection, char *error);
-int HTTP2_addr_add_by_cluster(HTTP2_HOST *hc, char *host, int port, int max_connection, char *group, char *cluster_name, unsigned long cluster_id, char *node_name, unsigned long node_id,char *error);
+int HTTP2_addr_add_by_cluster(HTTP2_HOST *hc, char *host, int port, int max_connection, char *group, char *cluster_name, unsigned long cluster_id, char *node_name, unsigned long node_id, char *key_name, int key_len, int link_status, int state, char *error);
 int HTTP2_open(HTTP2_HOST *hc, HTTP2_CONNECTION **connect, char *error);      /* Estrabishes connnection to sever */
 int HTTP2_connect(HTTP2_HOST *hc, char *error);                                 /* Initialize HTTP2 PREFACE, setting, and widows updates*/
 int HTTP2_write(HTTP2_CONNECTION *conn, char *error);           /* Write data to TCP's buffer */
