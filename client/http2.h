@@ -169,7 +169,7 @@ int HTTP2_encode(HTTP2_CONNECTION *conn, char *error);
 int HTTP2_write_header(HTTP2_CONNECTION *conn, HTTP2_BUFFER **header_block, HEADER_FIELD *hf, char *error);
 
 int HTTP2_insert_length(unsigned int len, int nlen, unsigned char *data);
-int HTTP2_send_message(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, HTTP2_BUFFER *header_block, HTTP2_BUFFER *data, char *error);
+int HTTP2_send_message(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, HTTP2_BUFFER *header_block, int hflags, HTTP2_BUFFER *data, int bflag, char *error);
 int HTTP2_stream_open(int streamID);
 int HTTP2_stream_close(int streamID);
 

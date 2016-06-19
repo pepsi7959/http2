@@ -236,7 +236,6 @@ static int HTTP2_connect_setup_res(HTTP2_CONNECTION *conn, char *error){
     return HTTP2_RET_INVALID_PARAMETER;
 }
 
-
 int HTTP2_open(HTTP2_HOST *hc, HTTP2_CONNECTION **hconn, char *error){ 
     char buff[256];
     int ff, i, r, sk;
@@ -843,7 +842,7 @@ int HTTP2_insert_length(unsigned int len, int nlen, unsigned char *data){
     return HTTP2_RET_OK;
 }
 
-int HTTP2_send_message(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, HTTP2_BUFFER *header_block, HTTP2_BUFFER *data, char *error){
+int HTTP2_send_message(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, HTTP2_BUFFER *header_block, int hflags, HTTP2_BUFFER *data, int bflag, char *error){
 
     if( header_block->len + data->len> (conn->w_buffer->size - conn->w_buffer->len) ){
         //TODO allocate wbuffer
@@ -865,7 +864,7 @@ int HTTP2_send_message(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, HTTP2_BUFFER *hea
     conn->w_buffer->len += 1;
     
     //write flag    1 byte
-    conn->w_buffer->data[conn->w_buffer->len] = 4;
+    conn->w_buffer->data[conn->w_buffer->len] = hflags;
     conn->w_buffer->len += 1;
     
     //write stream  4 bytes;
@@ -895,7 +894,7 @@ int HTTP2_send_message(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, HTTP2_BUFFER *hea
         conn->w_buffer->len += 1;
         
         //write flag    1 byte
-        conn->w_buffer->data[conn->w_buffer->len] = 1;
+        conn->w_buffer->data[conn->w_buffer->len] = bflag;
         conn->w_buffer->len += 1;
         
         //write stream  4 bytes;
