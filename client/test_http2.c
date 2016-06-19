@@ -1305,7 +1305,7 @@ int test_GRPC_get_etcd_watch_request(){
     HEADER_FIELD hf2 = {NULL,NULL,0,0,":scheme", "http"};
     ASSERT( HTTP2_write_header(conn, &hb, &hf2, error) == HTTP2_RET_OK);
     
-    HEADER_FIELD hf3 = {NULL,NULL,0,0,":path", "/etcdserverpb.Lease/LeaseKeepAlive"};
+    HEADER_FIELD hf3 = {NULL,NULL,0,0,":path", "/etcdserverpb.Watch/Watch"};
     ASSERT( HTTP2_write_header(conn, &hb, &hf3, error) == HTTP2_RET_OK);
 
     HEADER_FIELD hf4 = {NULL,NULL,0,0,":authority", "127.0.0.1"};
@@ -1321,21 +1321,22 @@ int test_GRPC_get_etcd_watch_request(){
     ASSERT( HTTP2_write_header(conn, &hb, &hf7, error) == HTTP2_RET_OK);
 
 
-    data->len = 0;
-    HTTP2_send_message(hc, conn, hb, 0x4, data, 0x0, error);
-    ASSERT( HTTP2_write(conn , error) == HTTP2_RET_SENT );
-    sleep(1);
-    
+    //data->len = 0;
+    //HTTP2_send_message(hc, conn, hb, 0x4, data, 0x0, error);
+    //ASSERT( HTTP2_write(conn , error) == HTTP2_RET_SENT );
+    //sleep(1);
+    /*
     ASSERT( HTTP2_write_header(conn, &hb2, &hf1, error) == HTTP2_RET_OK);
     ASSERT( HTTP2_write_header(conn, &hb2, &hf2, error) == HTTP2_RET_OK);
-    HEADER_FIELD hf32 = {NULL,NULL,0,0,":path", "/etcdserverpb.Watch/Watch"};
+    //HEADER_FIELD hf32 = {NULL,NULL,0,0,":path", "/etcdserverpb.Watch/Watch"};
     ASSERT( HTTP2_write_header(conn, &hb2, &hf32, error) == HTTP2_RET_OK);
     ASSERT( HTTP2_write_header(conn, &hb2, &hf4, error) == HTTP2_RET_OK);
     ASSERT( HTTP2_write_header(conn, &hb2, &hf5, error) == HTTP2_RET_OK);
     ASSERT( HTTP2_write_header(conn, &hb2, &hf6, error) == HTTP2_RET_OK);
     ASSERT( HTTP2_write_header(conn, &hb2, &hf7, error) == HTTP2_RET_OK);
+    */
     ASSERT( GRPC_get_etcd_watch_request(&data, (unsigned char *)"damocles", sizeof("damocles")-1, (unsigned char *)"damoclet", sizeof("damoclet")-1, error) == GRPC_RET_OK );
-    HTTP2_send_message(hc, conn, hb2, 0x4, data, 0x0, error);
+    HTTP2_send_message(hc, conn, hb, 0x4, data, 0x0, error);
     
     HEXDUMP(data->data, data->len);
     ASSERT( HTTP2_write(conn , error) == HTTP2_RET_SENT );

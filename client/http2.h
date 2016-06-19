@@ -43,7 +43,8 @@ typedef struct _clnt_addr_t{
     struct _clnt_addr_t *next;
     struct _clnt_addr_t *prev;
     char  host[HTTP2_MAX_STRING_HOST];
-
+    char  key_name[1024];
+    char  key_len;
     char  group[256];                   // D21, D20 and D11
     char  cluster_name[256];   
     char  node_name[256];
@@ -55,6 +56,8 @@ typedef struct _clnt_addr_t{
     int   connection_type;              // type = [ONLINE|STANDBY], default=ONLINE
     int   connection_count;
     int   max_connection;   
+    int   link_status; 
+    int   state;
 }HTTP2_CLNT_ADDR;
 
 typedef struct _buffer_t HTTP2_BUFFER;
