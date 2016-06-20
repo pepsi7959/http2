@@ -9,10 +9,6 @@
 
 static Pb__Request req;
 
-int GRPC_send_request(GRPC_BUFFER *buffer);
-int GRPC_send_resolve(GRPC_BUFFER *buffer);
-int GRPC_send_register(GRPC_BUFFER *buffer);
-
 int GRPC_get_scope(const char *scope){
     if( strcmp(scope, "base") == 0){
         return PB__SEARCH_SCOPE__BaseObject;
@@ -24,7 +20,6 @@ int GRPC_get_scope(const char *scope){
         return PB__SEARCH_SCOPE__BaseObject;
     }
 }
-
 
 /*
  * Find the first occurrence of find in s, where the search is limited to the
@@ -190,6 +185,78 @@ int GRPC_gen_entry_ldap(Pb__Entry **entry, char *dn, char *objectclass, ATTRLIST
         attr_len++;
         t_attrs = t_attrs->next;
         if( t_attrs == attr_list){
+            break;
+        }
+    }
+    
+    (*entry)->n_attributes  = attr_len;
+    (*entry)->attributes    = attrs;
+
+    return GRPC_RET_OK;
+}
+
+int GRPC_gen_mod_entry_ldap(Pb__Entry **entry, char *dn, char *objectclass, MODLIST *mode_list, char *error){
+    
+    int attr_len                    = 0;
+    static int is_attrs_set         = 0;
+    static Pb__EntryAttribute *attrs[256];
+    
+    if( *entry == NULL ){
+        printf("create New\n");
+        Pb__Entry *nentry = malloc(sizeof(Pb__Entry));
+        pb__entry__init(nentry);
+        if(nentry == NULL){
+            if( error != NULL ) sprintf(error, "Cannot allocate memory");
+            return GRPC_RET_ERR_MEMORY;
+        }
+        *entry = nentry;
+    }
+    
+    (*entry)->dn                    = (char *)malloc(strlen(dn)+1);
+    strcpy((*entry)->dn, dn);
+
+    
+
+    if( mode_list == NULL ){
+        if (error != NULL) sprintf(error, "MODLIST* is NULL");
+        return GRPC_RET_INVALID_PARAMETER;
+    }
+    
+    MODLIST *t_attrs = mode_list;
+    
+    while( t_attrs ){
+        
+        if( is_attrs_set <= attr_len){
+            attrs[attr_len] = (Pb__EntryAttribute*)malloc(sizeof(Pb__EntryAttribute));
+            pb__entry_attribute__init(attrs[attr_len]);
+            attrs[attr_len]->name  = malloc(sizeof(char) * MAX_ATTR_NAME_SIZE);
+            is_attrs_set++;
+        }
+
+
+        strcpy(attrs[attr_len]->name, t_attrs->name);
+        
+        //TODO:
+        attrs[attr_len]->values     = malloc(sizeof(char*) * MAX_ATTRIBUTE_VALUES);
+        
+        VALLIST *t_vals = t_attrs->vals;
+        int vals = 0;
+        while( t_vals ){
+            
+            attrs[attr_len]->values[vals] = malloc(sizeof(char) * MAX_ATTR_VALUE_SIZE);
+            strcpy(attrs[attr_len]->values[vals], t_vals->value);
+            vals++;
+            
+            t_vals = t_vals->next;
+            if( t_vals == t_attrs->vals){
+                break;
+            }
+        }
+        attrs[attr_len]->n_values   = vals;
+        
+        attr_len++;
+        t_attrs = t_attrs->next;
+        if( t_attrs == mode_list){
             break;
         }
     }
@@ -534,6 +601,7 @@ int GRPC_get_ldap_reqsponse(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *
     }
 
     buf = (GRPC_BUFFER*)malloc(sizeof(GRPC_BUFFER)+sizeof(char)*2*data->len);
+    buf->len = 0;
     result->bstring = buf;
     
     blen += sprintf((char *)(buf->data+blen),"{");
@@ -583,10 +651,6 @@ int GRPC_get_ldap_reqsponse(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *
     
     return GRPC_RET_OK;
 }
-
-int GRPC_gen_resolve();
-
-int GRPC_gen_register();
 
 int GRPC_get_etcd_range_request(GRPC_BUFFER **buffer, unsigned char *prefix, int prefix_len, unsigned char *range_end , int range_end_len, char *error){
     Etcdserverpb__RangeRequest *range_req = NULL;
@@ -667,7 +731,7 @@ int GRPC_get_etcd_range_response(GRPC_BUFFER *buffer, ATTRLIST **alist, char *er
     VALLIST* attr_v  = NULL;
     for(i = 0; i < res->n_kvs ; i++){
         if( res->kvs[i]->has_key ){
-            if( strnstr ((char *)&res->kvs[i]->key.data[0], "grpc-addr", res->kvs[i]->key.len) != NULL 
+            if( strnstr ((char *)&res->kvs[i]->key.data[0], "cfg", res->kvs[i]->key.len) != NULL 
             || strnstr((char *)&res->kvs[i]->key.data[0], "stat", res->kvs[i]->key.len) != NULL){
                 attr_n = calloc(1, sizeof(ATTRLIST));
                 attr_n->next = NULL;

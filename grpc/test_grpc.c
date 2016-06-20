@@ -402,6 +402,33 @@ int test_GRPC_gen_entry_ldap(){
     return TEST_RESULT_SUCCESSED;
 }
 
+int test_GRPC_gen_mod_entry_ldap(){
+    char error[1024];
+    Pb__Entry *entry = NULL;
+    MODLIST *mod_list = calloc(1, sizeof(MODLIST));
+    mod_list->next = NULL;
+    mod_list->prev = NULL;
+    strcpy( mod_list->name, "objectClass");
+    VALLIST *val = calloc(1, sizeof(VALLIST));
+    strcpy( val->value, "subscriber" );
+    LINKEDLIST_APPEND( mod_list->vals, val);
+    
+    val = calloc(1, sizeof(VALLIST));
+    strcpy( val->value, "subscriber1" );
+    LINKEDLIST_APPEND( mod_list->vals, val);
+    
+    //LINKEDLIST_APPEND( mod_list, mod_list);
+    ASSERT( GRPC_gen_mod_entry_ldap(&entry, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "objectClass", mod_list, error) == GRPC_RET_OK );
+    ASSERT( entry->n_attributes == 1);
+    ASSERT( strcmp(entry->dn, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB") == 0 );
+    ASSERT( strcmp( entry->attributes[0]->name, "objectClass") == 0 );
+    ASSERT( entry->attributes[0]->n_values == 2 );
+    ASSERT( strcmp( entry->attributes[0]->values[0], "subscriber") == 0 );
+    ASSERT( strcmp( entry->attributes[0]->values[1], "subscriber1") == 0 );
+    free(mod_list);
+    return TEST_RESULT_SUCCESSED;
+}
+
 int test_GRPC_gen_add_request(){
     char error[1024];
     Pb__Request *decode_req = NULL;
@@ -1821,7 +1848,7 @@ int test_GRPC_get_etcd_watch_request(){
 
     char error[1024];
     GRPC_BUFFER *buffer = NULL;
-    ASSERT( GRPC_get_etcd_watch_request(&buffer, "damocles", 8, "damoclet" , 8, error) == GRPC_RET_OK );
+    ASSERT( GRPC_get_etcd_watch_request(&buffer, (unsigned char*)"damocles", 8, (unsigned char *)"damoclet" , 8, error) == GRPC_RET_OK );
     HEXDUMP( buffer->data, buffer->len);
     
     HEXDUMP( data+5, sizeof(data)-5);
@@ -1838,11 +1865,12 @@ void test_all(){
     UNIT_TEST(test_GRPC_get_reqsponse());
     UNIT_TEST(test_GRPC_gen_entry_ldap()); */
     //UNIT_TEST(test_GRPC_get_etcd_range_request());
-    UNIT_TEST(test_GRPC_gen_search_request());
-    UNIT_TEST(test_GRPC_get_ldap_reqsponse());
-    UNIT_TEST(test_GRPC_get_etcd_range_response());
-    UNIT_TEST(test_add_connection());
-    UNIT_TEST(test_GRPC_get_etcd_watch_request());
+    UNIT_TEST(test_GRPC_gen_mod_entry_ldap());
+    //UNIT_TEST(test_GRPC_gen_search_request());
+    //UNIT_TEST(test_GRPC_get_ldap_reqsponse());
+    //UNIT_TEST(test_GRPC_get_etcd_range_response());
+    //UNIT_TEST(test_add_connection());
+    //UNIT_TEST(test_GRPC_get_etcd_watch_request());
         
 }
 
