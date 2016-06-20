@@ -47,8 +47,19 @@ struct _attr_list_t
     VALLIST             *vals;
 };
 
+struct _attr_mod_list_t
+{
+    struct _attr_mod_list_t *prev;
+    struct _attr_mod_list_t *next;
+    int                 operation;
+    int                 len;
+    char                name[MAX_ATTR_VALUE_SIZE];
+    VALLIST             *vals;
+};
+
 typedef struct ldap_result_t LDAP_RESULT;
 typedef struct _attr_list_t ATTRLIST;
+typedef struct _attr_mod_list_t MODLIST;
 
 enum GRPC_SERVICE{
     GRPC_SERVICE_DO = 1,
@@ -63,9 +74,9 @@ int GRPC_send_register(GRPC_BUFFER *buffer);
 
 int GRPC_gen_entry(Pb__Entry **entry,char *dn, char *objectclass, char *attr[128], int attr_len, char *error);
 int GRPC_gen_entry_ldap(Pb__Entry **entry, char *dn, char *objectclass, ATTRLIST *attrs, char *error);
+int GRPC_gen_mod_entry_ldap(Pb__Entry **entry, char *dn, char *objectclass, MODLIST *mode_list, char *error);
 
 int GRPC_gen_modify_entry(Pb__Entry **entry,char *dn, char *attr[128], int attr_len, char *error);
-
 int GRPC_gen_delete_request(unsigned int tid, GRPC_BUFFER **buffer, char *base_dn, int flags, char *error);
 int GRPC_gen_add_request(unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *entry, int flags, char *error);
 int GRPC_gen_modity_request(unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *entry, int flags, char *error);
