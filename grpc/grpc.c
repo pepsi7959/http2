@@ -394,34 +394,33 @@ int GRPC_gen_modity_request(unsigned int tid, GRPC_BUFFER **buffer, const char *
     return GRPC_RET_OK;
 }
 
-int GRPC_gen_search_request(unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, const char *scope, const char *filter, const char **attrs, int flags, char *error){
+int GRPC_gen_search_request(unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, const char *scope, const char *filter, char **attrs, int nattrs, int flags, char *error){
    
     //Generate Request
-    Pb__Request *req        = calloc(1,sizeof(Pb__Request));
+    static Pb__Request req;
     int len                 = 0;
-    pb__request__init(req);
+    pb__request__init(&req);
     
-    req->has_id             = 1;
-    req->id                 = tid;
-    req->basedn             = (char *)base_dn;
-    req->filter             = (char *)filter;
-    req->dn                 = NULL;
+    req.has_id             = 1;
+    req.id                 = tid;
+    req.basedn             = (char *)base_dn;
+    req.filter             = (char *)filter;
+    req.dn                 = NULL;
     
-    req->has_method         = 1;
-    req->method             = PB__RESTMETHOD__GET;
+    req.has_method         = 1;
+    req.method             = PB__RESTMETHOD__GET;
     
     //TODO: add function get_scope_from_string()
-    req->has_scope          = 1;
-    req->scope              = GRPC_get_scope(scope);
-    req->has_recursive      = 0;
-    req->recursive          = 0;
+    req.has_scope          = 1;
+    req.scope              = GRPC_get_scope(scope);
+    req.has_recursive      = 0;
+    req.recursive          = 0;
     
     //TODO: add attribute filter
-    req->n_attributes       = 1;
-    char *attr              = "*";
-    req->attributes         = &attr;
+    req.n_attributes       = nattrs;
+    req.attributes         = attrs;
     
-    len = pb__request__get_packed_size(req);
+    len = pb__request__get_packed_size(&req);
     
     if(*buffer == NULL){
         *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*len);
@@ -435,7 +434,7 @@ int GRPC_gen_search_request(unsigned int tid, GRPC_BUFFER **buffer, const char *
         return GRPC_RET_UNIMPLEMENT;
     }
     
-    if( pb__request__pack(req, (*buffer)->data+((*buffer)->len)) != len ){
+    if( pb__request__pack(&req, (*buffer)->data+((*buffer)->len)) != len ){
         if( error != NULL ) sprintf(error, "pb__request__pack return invalid length");
         return GRPC_RET_INVALID_LENGTH;
     }

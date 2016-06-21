@@ -254,14 +254,19 @@ int test_GRPC_gen_search_request(){
     buffer->data[0]         = 0;
     error[0]                = 0;
 
-    ASSERT( GRPC_gen_search_request(0x01, &buffer, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK );
+    char *attrs[1024];
+    attrs[0] = "toro";    
+    attrs[1] = "ok";
+    
+    ASSERT( GRPC_gen_search_request(0x01, &buffer, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", attrs, 2,0, error) == GRPC_RET_OK );
     ASSERT( buffer->len >= 0);
     HEXDUMP(buffer->data, buffer->len);
     
     decode_req  = pb__request__unpack(NULL, buffer->len, (void*)buffer->data);
-        
     ASSERT(decode_req != NULL);
     ASSERT(decode_req->id == 0x01);
+    ASSERT(decode_req->n_attributes == 2);
+    ASSERT( strcmp( decode_req->attributes[0], "toro") == 0);
     ASSERT(decode_req->scope == PB__SEARCH_SCOPE__BaseObject);
     DEBUG("DN: %s", decode_req->basedn);
     ASSERT(strcmp(decode_req->basedn, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB") == 0);
@@ -425,7 +430,7 @@ int test_GRPC_gen_mod_entry_ldap(){
     ASSERT( entry->attributes[0]->n_values == 2 );
     ASSERT( strcmp( entry->attributes[0]->values[0], "subscriber") == 0 );
     ASSERT( strcmp( entry->attributes[0]->values[1], "subscriber1") == 0 );
-    free(mod_list);
+    //free(mod_list);
     return TEST_RESULT_SUCCESSED;
 }
 
