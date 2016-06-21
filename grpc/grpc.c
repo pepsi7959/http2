@@ -211,7 +211,8 @@ int GRPC_gen_mod_entry_ldap(Pb__Entry **entry, char *dn, char *objectclass, MODL
         }
         *entry = nentry;
     }
-    
+    (*entry)->has_method            = 1;
+    (*entry)->method                = PB__ENTRY_METHOD__Replace;
     (*entry)->dn                    = (char *)malloc(strlen(dn)+1);
     strcpy((*entry)->dn, dn);
 
