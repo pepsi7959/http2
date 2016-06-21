@@ -533,6 +533,90 @@ int test_GRPC_get_etcd_range_request(){
     return TEST_RESULT_SUCCESSED;
 }
 
+int update_connection( char *key, char *value){
+#define has_next(_ch) do{   \
+	p = pp;					\
+	pp = strchr(p, _ch);	\
+	if (pp == NULL)  break;	\
+	memcpy(b, p, pp-p);		\
+	b[pp-p]	 = 0;			\
+	pp++;					\
+}while(0)
+#define STRCASEEQ(__a,__b) (strcasecmp(__a,__b) == 0)
+	char *p   = NULL;	
+	char *pp  = NULL;
+	char b[4096];
+    char group[1024];
+    char host[1024];
+    char cluster_name[1024];
+    char node_name[1024];
+    char key_name[1024];
+    unsigned long cluster_id;
+    unsigned long node_id;
+
+    int link_status = 0;
+    int key_len     = 0;
+    int state       = 0;
+    int port        = 0;
+    
+    //damocles_d20_cluster_5c8f6b17c7dbdad6_node_193b7109e2e90a33_status
+	pp = strchr(key, '_'); // Ignore damocles key
+	pp++; // Skipe '_'
+
+	has_next('_');
+	printf("Process :%s\n", b);	
+    strcpy(group, b);
+    
+	has_next('_');  //cluster
+	has_next('_');  //5c8f6b17c7dbdad6
+	printf("cluster :%s\n", b);
+    strcpy(cluster_name, b);
+    cluster_id = (unsigned long)strtoul(b, NULL, 16);
+    
+	has_next('_');  //node
+	has_next('_');  //193b7109e2e90a33
+	printf("node :%s\n", b);	
+    strcpy(node_name, b);	
+    node_id = (unsigned long)strtoul(b, NULL, 16);
+    
+    key_len = (pp-key);
+    memcpy(key_name, key, key_len);//damocles_d20_cluster_5c8f6b17c7dbdad6_node_193b7109e2e90a33_
+    key_name[key_len] = 0;
+    
+    printf("Key name : %s\n", key_name);
+    
+    if( STRCASEEQ(pp, "status") ){
+        printf("Update status : %s\n", value);
+    }else if( STRCASEEQ(pp, "state") ){
+        printf("Update state : %s\n", value);
+    }else if( strcmp(pp, "cfg") == 0){ 
+    
+        pp = strstr(value, "\"grpcAddr\"");	
+        if( pp == NULL){return -2;}
+        pp += 18; // sizeof  "\"grpAddr\":\"tcp://"
+        has_next(':');
+        printf("Host :%s\n", b);
+        strcpy(host, b);
+        
+        has_next('"');
+        printf("Port :%s\n", b);
+        port = atoi(b);
+        
+        pp = strstr(value, "\"name\":\"");	
+        pp += 8; // sizeof "\"name\":\""
+        has_next('"');
+        printf("Node name :%s\n", b);
+        strcpy(host, b);
+        
+        pp = strstr(value, "\"clusterName\":\"");	
+        pp += 15; // sizeof "\"clusterName\":\""
+        has_next('"');
+        printf("Cluster name :%s\n", b);
+        strcpy(cluster_name, b);
+
+    }
+    return TEST_RESULT_SUCCESSED;
+}
 
 int add_connection( char *key, char *value){
 
@@ -1826,8 +1910,9 @@ int test_GRPC_get_etcd_range_response(){
 		tmp_alist = tmp_alist->next;
 		printf("key: %s\n", tmp_alist->name);
 		if( tmp_alist->vals && tmp_alist->vals->value){
-			//printf("value: %s\n", tmp_alist->vals->value);
-			add_connection(tmp_alist->name, tmp_alist->vals->value);	
+			printf("value: %s\n", tmp_alist->vals->value);
+			//add_connection(tmp_alist->name, tmp_alist->vals->value);	
+            update_connection(tmp_alist->name, tmp_alist->vals->value);
 		}
 		if( tmp_alist == alist ){
 			break;	
@@ -1873,7 +1958,7 @@ void test_all(){
     UNIT_TEST(test_GRPC_gen_mod_entry_ldap());
     //UNIT_TEST(test_GRPC_gen_search_request());
     //UNIT_TEST(test_GRPC_get_ldap_reqsponse());
-    //UNIT_TEST(test_GRPC_get_etcd_range_response());
+    UNIT_TEST(test_GRPC_get_etcd_range_response());
     //UNIT_TEST(test_add_connection());
     //UNIT_TEST(test_GRPC_get_etcd_watch_request());
         
