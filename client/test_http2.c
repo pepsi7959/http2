@@ -715,8 +715,8 @@ int test_HTTP2_send_message(){
     ASSERT( HTTP2_write_header(conn, &hb, &hf71, error) == HTTP2_RET_OK);
     ASSERT( memcmp(hb->data, header_frame, hb->len) == 0);
     
-    //ASSERT( GRPC_gen_search_request(0x01, &data,"systemId=ocf,subdata=profile,ds=slf,subdata=services,systemId=ocf,subdata=profile,ds=slf,subdata=services,uid=000000000000001,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
-    ASSERT( GRPC_gen_search_request(0x0188, &data,"subdata=profile,ds=gup,subdata=services,uid=668111111320000,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "sub", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
+    //ASSERT( GRPC_gen_search_request(0x01, &data,"systemId=ocf,subdata=profile,ds=slf,subdata=services,systemId=ocf,subdata=profile,ds=slf,subdata=services,uid=000000000000001,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "search", "(objectClass=*)", NULL, 0, 0, error) == GRPC_RET_OK);
+    ASSERT( GRPC_gen_search_request(0x0188, &data,"subdata=profile,ds=gup,subdata=services,uid=668111111320000,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "sub", "(objectClass=*)", NULL, 0, 0, error) == GRPC_RET_OK);
     HTTP2_send_message(hc, conn, hb, 0x1, data, 0x1, error);
 
     if( HTTP2_read(conn, error)  != HTTP2_RET_OK ) printf("read : %s\n",error);
@@ -757,7 +757,7 @@ int test_HTTP2_send_message(){
         //Search
 
         data->len = 0;
-        ASSERT( GRPC_gen_search_request(0x123, &data,"subdata=profile,ds=gup,subdata=services,UID=000000000000002,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
+        ASSERT( GRPC_gen_search_request(0x123, &data,"subdata=profile,ds=gup,subdata=services,UID=000000000000002,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", NULL, 0, 0, error) == GRPC_RET_OK);
         HTTP2_send_message(hc, conn, hb, 0x1, data, 0x1, error);
         HTTP2_write(conn , error);
         /*
@@ -804,7 +804,7 @@ int test_HTTP2_send_message(){
         
         
         data->len = 0;
-        ASSERT( GRPC_gen_search_request(0x123, &data,"uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
+        ASSERT( GRPC_gen_search_request(0x123, &data,"uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "search", "(objectClass=*)", NULL, 0, 0, error) == GRPC_RET_OK);
         HTTP2_send_message(hc, conn, hb, 0x1, data, 0x1, error);
         HTTP2_write(conn , error);
      */
@@ -979,7 +979,7 @@ int test_GRPC_send_message_to_d21(){
 
 
     /* Generate Request */
-    ASSERT( GRPC_gen_search_request(1239909, &data,"msisdn=66000000000000001,dc=MSISDN,dc=C-NTDB", "sub", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
+    ASSERT( GRPC_gen_search_request(1239909, &data,"msisdn=66000000000000001,dc=MSISDN,dc=C-NTDB", "sub", "(objectClass=*)", NULL, 0, 0, error) == GRPC_RET_OK);
     HTTP2_send_message(hc, conn, hb, 0x1, data, 0x1, error);
 
     if( HTTP2_read(conn, error)  != HTTP2_RET_OK ) printf("read : %s\n",error);
@@ -1025,7 +1025,7 @@ int test_GRPC_send_message_to_d21(){
 
         //Search
         data->len = 0;
-        ASSERT( GRPC_gen_search_request(0x123, &data,"UID=000000000000002,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
+        ASSERT( GRPC_gen_search_request(0x123, &data,"UID=000000000000002,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", NULL, 0, 0, error) == GRPC_RET_OK);
         HTTP2_send_message(hc, conn, hb, 0x1, data, 0x1, error);
         HTTP2_write(conn , error);
         
@@ -1072,7 +1072,7 @@ int test_GRPC_send_message_to_d21(){
         
         
         data->len = 0;
-        ASSERT( GRPC_gen_search_request(0x123, &data,"uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "search", "(objectClass=*)", NULL, 0, error) == GRPC_RET_OK);
+        ASSERT( GRPC_gen_search_request(0x123, &data,"uid=000000000000002,ds=SUBSCRIBER,o=AIS,DC=C-NTDB", "search", "(objectClass=*)", NULL, 0, 0, error) == GRPC_RET_OK);
         HTTP2_send_message(hc, conn, hb, 0x1, data, 0x1, error);
         HTTP2_write(conn , error);
         */
