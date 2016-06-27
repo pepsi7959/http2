@@ -174,7 +174,9 @@ typedef struct _cluster_t{
     HTTP2_NODE              *list_nodes;    /* list of nodes */
     HTTP2_NODE              *leader_node;   /* The temporary poiter that ponit to leader node. */
     HTTP2_MESSAGES          *send_msg_queue;
+    
     int                     node_count;
+    int                     send_msg_queue_count;
 }HTTP2_CLUSTER;
 
 
