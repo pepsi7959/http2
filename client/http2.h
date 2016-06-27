@@ -8,10 +8,14 @@
 #define HTTP2_MAX_CONNECTION                    4096
 #define HTTP2_MAX_CONCURRENCE                   32
 #define HTTP2_MAX_HOST_NAME                     1024
+#define HTTP2_MAX_CLUSTER_NAME                  1024
 #define HTTP2_MAX_WRITE_BUFFER_SIZE             (4*1024*1024)
 #define HTTP2_MAX_READ_BUFFER_SIZE              (4*1024*1024)
 #define HTTP2_MAX_BUFFER_SISE                   (4096)
 #define HTTP2_MAX_SIZE_GROUP_NAME               128
+
+#define HTTP2_MAX_CLUSTER_PER_SERVICE           128
+#define HTTP2_MAX_NODE_PER_CLUSTER              128
 
 enum HTTP2_CONNECTION_STATE{
     HTTP2_CONNECTION_STATE_OPEN = 0,
@@ -125,7 +129,9 @@ typedef struct _connection_t{
     HTTP2_FRAME_FORMAT      *frame_recv;
 }HTTP2_CONNECTION;
 
-typedef struct _host_t{
+typedef struct _node_t{
+    struct _node_t          *next;
+    struct _node_t          *prev;
     HTTP2_CLNT_ADDR         *list_addr;
     char                    name[HTTP2_MAX_HOST_NAME];
     int                     max_connection;
@@ -155,24 +161,53 @@ typedef struct _host_t{
     HTTP2_CONNECTION        *connection_pool[HTTP2_MAX_CONNECTION];
     HTTP2_MESSAGES          *send_msg_queue;
     void                    *context;
-}HTTP2_HOST;
+}HTTP2_NODE;
 
-extern HTTP2_HOST *HTTP2_HOSTS[];
+typedef struct _cluster_t{
+    struct _cluster_t       *next;
+    struct _cluster_t       *prev;
+    
+    unsigned long           cluster_id;
+    char                    cluster_name[HTTP2_MAX_CLUSTER_NAME];
 
-int HTTP2_host_create(HTTP2_HOST **hc, char *name, int max_connection, char *error);
-int HTTP2_addr_add(HTTP2_HOST *hc, char *host, int port, int max_connection, char *error);
-int HTTP2_addr_add_by_cluster(HTTP2_HOST *hc, char *host, int port, int max_connection, char *group, char *cluster_name, unsigned long cluster_id, char *node_name, unsigned long node_id, char *key_name, int key_len, int link_status, int state, char *error);
-int HTTP2_open(HTTP2_HOST *hc, HTTP2_CONNECTION **connect, char *error);      /* Estrabishes connnection to sever */
-int HTTP2_connect(HTTP2_HOST *hc, char *error);                                 /* Initialize HTTP2 PREFACE, setting, and widows updates*/
-int HTTP2_write(HTTP2_CONNECTION *conn, char *error);           /* Write data to TCP's buffer */
-int HTTP2_read(HTTP2_CONNECTION *conn, char *error);            /* Read from TCP's buffer */
-int HTTP2_close(HTTP2_HOST *hc, int no, char *error);                                                              /* Close connection */
-int HTTP2_decode(HTTP2_CONNECTION *conn, char *error);
-int HTTP2_encode(HTTP2_CONNECTION *conn, char *error);
+    HTTP2_NODE              *nodes[HTTP2_MAX_NODE_PER_CLUSTER];
+    HTTP2_NODE              *list_nodes;    /* list of nodes */
+    HTTP2_NODE              *leader_node;   /* The temporary poiter that ponit to leader node. */
+    HTTP2_MESSAGES          *send_msg_queue;
+    int                     node_count;
+}HTTP2_CLUSTER;
+
+
+typedef struct _service_t{
+    struct _service_t       *next;
+    struct _service_t       *prev;
+    char                    name[128];
+    int                     name_len;
+    int                     id;
+    int                     cluster_count;
+    HTTP2_CLUSTER           *clusters[HTTP2_MAX_CLUSTER_PER_SERVICE];
+}HTTP2_SERVICE;
+    
+extern HTTP2_NODE *HTTP2_NODES[];
+
+int HTTP2_service_create(HTTP2_SERVICE **service, char *service_name, char *error);
+int HTTP2_cluster_create(HTTP2_CLUSTER **cluster, unsigned long cluster_id, char *cluster_name, char *error);
+int HTTP2_node_create(HTTP2_NODE **hc, char *name, int max_connection, char *error);
+int HTTP2_addr_add(HTTP2_NODE *hc, char *host, int port, int max_connection, char *error);
+int HTTP2_addr_add_by_cluster(HTTP2_NODE *hc, char *host, int port, int max_connection, char *group, char *cluster_name, unsigned long cluster_id, char *node_name, unsigned long node_id, char *key_name, int key_len, int link_status, int state, char *error);
+
+int HTTP2_open(HTTP2_NODE *hc, HTTP2_CONNECTION **connect, char *error);         /* Estrabishes connnection to sever */
+int HTTP2_connect(HTTP2_NODE *hc, char *error);                                  /* Initialize HTTP2 PREFACE, setting, and widows updates*/
+int HTTP2_write(HTTP2_CONNECTION *conn, char *error);                           /* Write data to TCP's buffer */
+int HTTP2_read(HTTP2_CONNECTION *conn, char *error);                            /* Read from TCP's buffer */
+int HTTP2_close(HTTP2_NODE *hc, int no, char *error);                            /* Close connection */
+
+int HTTP2_decode(HTTP2_CONNECTION *conn, char *error);                          /* Decode frame. */
+int HTTP2_encode(HTTP2_CONNECTION *conn, char *error);                          
 int HTTP2_write_header(HTTP2_CONNECTION *conn, HTTP2_BUFFER **header_block, HEADER_FIELD *hf, char *error);
 
 int HTTP2_insert_length(unsigned int len, int nlen, unsigned char *data);
-int HTTP2_send_message(HTTP2_HOST *hc, HTTP2_CONNECTION *conn, HTTP2_BUFFER *header_block, int hflags, HTTP2_BUFFER *data, int bflag, char *error);
+int HTTP2_send_message(HTTP2_NODE *hc, HTTP2_CONNECTION *conn, HTTP2_BUFFER *header_block, int hflags, HTTP2_BUFFER *data, int bflag, char *error); /* Copy data to buffer's connection */
 int HTTP2_stream_open(int streamID);
 int HTTP2_stream_close(int streamID);
 

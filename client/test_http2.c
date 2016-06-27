@@ -31,10 +31,10 @@ int test_HTTP2_open(){
     char error[1024];
     error[0]                = 0;
     int r                   = 0;
-    HTTP2_HOST *hc          = NULL;
+    HTTP2_NODE *hc          = NULL;
     HTTP2_CONNECTION *conn  = NULL;
     
-    ASSERT( HTTP2_host_create(&hc, "d21", 1, error) == HTTP2_RET_OK );
+    ASSERT( HTTP2_node_create(&hc, "d21", 1, error) == HTTP2_RET_OK );
     ASSERT( hc != NULL );
     ASSERT( strcmp(hc->name, "d21") == 0);
     ASSERT( hc->max_concurrence == HTTP2_MAX_CONCURRENCE );
@@ -82,10 +82,10 @@ int test_HTTP2_write(){
     char error[1024];
     error[0]                = 0;
     int r                   = 0;
-    HTTP2_HOST *hc          = NULL;
+    HTTP2_NODE *hc          = NULL;
     HTTP2_CONNECTION *conn  = NULL;
 
-    ASSERT( HTTP2_host_create(&hc, "d21", 1, error) == HTTP2_RET_OK );
+    ASSERT( HTTP2_node_create(&hc, "d21", 1, error) == HTTP2_RET_OK );
     ASSERT( HTTP2_addr_add(hc, "127.0.0.1", 6051, 10, error) == HTTP2_RET_OK );
 
     if( (r = HTTP2_open(hc, &conn, error)) != HTTP2_RET_OK ){
@@ -221,10 +221,10 @@ int test_HTTP2_decode(){
     char error[4096];
     error[0]                = 0;
     int r                   = 0;
-    HTTP2_HOST *hc          = NULL;
+    HTTP2_NODE *hc          = NULL;
     HTTP2_CONNECTION *conn  = NULL;
 
-    ASSERT( HTTP2_host_create(&hc, "d21", 1, error) == HTTP2_RET_OK );
+    ASSERT( HTTP2_node_create(&hc, "d21", 1, error) == HTTP2_RET_OK );
     ASSERT( HTTP2_addr_add(hc, "127.0.0.1", 6051, 10, error) == HTTP2_RET_OK );
     
     if( (r = HTTP2_open(hc, &conn, error)) != HTTP2_RET_OK ){
@@ -366,10 +366,10 @@ int test_grpc(){
     char error[1024];
     error[0]                = 0;
     int r                   = 0;
-    HTTP2_HOST *hc          = NULL;
+    HTTP2_NODE *hc          = NULL;
     HTTP2_CONNECTION *conn  = NULL;
 
-    ASSERT( HTTP2_host_create(&hc, "d21", 1, error) == HTTP2_RET_OK );
+    ASSERT( HTTP2_node_create(&hc, "d21", 1, error) == HTTP2_RET_OK );
     ASSERT( HTTP2_addr_add(hc, "10.252.169.12", 6051, 10, error) == HTTP2_RET_OK );
     
     if( (r = HTTP2_open(hc, &conn, error)) != HTTP2_RET_OK ){
@@ -474,11 +474,11 @@ int test_HTTP2_write_header(){
     char error[1024];
     error[0]                = 0;
     int r                   = 0;
-    HTTP2_HOST *hc          = NULL;
+    HTTP2_NODE *hc          = NULL;
     HTTP2_CONNECTION *conn  = NULL;
 
-    hc = (HTTP2_HOST*)malloc(sizeof(HTTP2_HOST));
-    memset(hc, 0, sizeof(HTTP2_HOST));
+    hc = (HTTP2_NODE*)malloc(sizeof(HTTP2_NODE));
+    memset(hc, 0, sizeof(HTTP2_NODE));
     hc->max_connection      = HTTP2_MAX_CONNECTION;
     hc->connection_count    = 0;
     hc->list_addr           = NULL;
@@ -640,11 +640,11 @@ int test_HTTP2_send_message(){
     char error[1024];
     error[0]                = 0;
     int r                   = 0;
-    HTTP2_HOST *hc          = NULL;
+    HTTP2_NODE *hc          = NULL;
     HTTP2_CONNECTION *conn  = NULL;
 
-    hc = (HTTP2_HOST*)malloc(sizeof(HTTP2_HOST));
-    memset(hc, 0, sizeof(HTTP2_HOST));
+    hc = (HTTP2_NODE*)malloc(sizeof(HTTP2_NODE));
+    memset(hc, 0, sizeof(HTTP2_NODE));
     hc->max_connection      = HTTP2_MAX_CONNECTION;
     hc->connection_count    = 0;
     hc->list_addr           = NULL;
@@ -731,7 +731,7 @@ int test_HTTP2_send_message(){
     ASSERT( HTTP2_write(conn , error) == HTTP2_RET_SENT );
     ASSERT( conn->w_buffer->len == 0);
     
-    Pb__Entry *entry = NULL;
+    //Pb__Entry *entry = NULL;
 
     while(1){
         HTTP2_read(conn, error);
@@ -900,11 +900,11 @@ int test_GRPC_send_message_to_d21(){
     char error[1024];
     error[0]                = 0;
     int r                   = 0;
-    HTTP2_HOST *hc          = NULL;
+    HTTP2_NODE *hc          = NULL;
     HTTP2_CONNECTION *conn  = NULL;
 
-    hc = (HTTP2_HOST*)malloc(sizeof(HTTP2_HOST));
-    memset(hc, 0, sizeof(HTTP2_HOST));
+    hc = (HTTP2_NODE*)malloc(sizeof(HTTP2_NODE));
+    memset(hc, 0, sizeof(HTTP2_NODE));
     hc->max_connection      = HTTP2_MAX_CONNECTION;
     hc->connection_count    = 0;
     hc->list_addr           = NULL;
@@ -994,7 +994,7 @@ int test_GRPC_send_message_to_d21(){
     ASSERT( HTTP2_write(conn , error) == HTTP2_RET_SENT );
     ASSERT( conn->w_buffer->len == 0);
     
-    Pb__Entry *entry    = NULL;
+    //Pb__Entry *entry    = NULL;
     LDAP_RESULT *lc     = NULL;
     while(1){
         HTTP2_read(conn, error);
@@ -1093,11 +1093,11 @@ int test_GRPC_get_etcd_range_request(){
     char error[1024];
     error[0]                = 0;
     int r                   = 0;
-    HTTP2_HOST *hc          = NULL;
+    HTTP2_NODE *hc          = NULL;
     HTTP2_CONNECTION *conn  = NULL;
 
-    hc = (HTTP2_HOST*)malloc(sizeof(HTTP2_HOST));
-    memset(hc, 0, sizeof(HTTP2_HOST));
+    hc = (HTTP2_NODE*)malloc(sizeof(HTTP2_NODE));
+    memset(hc, 0, sizeof(HTTP2_NODE));
     hc->max_connection      = HTTP2_MAX_CONNECTION;
     hc->connection_count    = 0;
     hc->list_addr           = NULL;
@@ -1203,8 +1203,6 @@ int test_GRPC_get_etcd_range_request(){
     
     if( HTTP2_read(conn, error)  != HTTP2_RET_OK ) printf("read : %s\n",error);
     if ( HTTP2_decode(conn, error) != HTTP2_RET_OK ) printf("decode : %s\n",error);
-       
-    Pb__Entry *entry = NULL;
 
     while(1){
         HTTP2_write(conn , error);
@@ -1254,11 +1252,11 @@ int test_GRPC_get_etcd_watch_request(){
     char error[1024];
     error[0]                = 0;
     int r                   = 0;
-    HTTP2_HOST *hc          = NULL;
+    HTTP2_NODE *hc          = NULL;
     HTTP2_CONNECTION *conn  = NULL;
 
-    hc = (HTTP2_HOST*)malloc(sizeof(HTTP2_HOST));
-    memset(hc, 0, sizeof(HTTP2_HOST));
+    hc = (HTTP2_NODE*)malloc(sizeof(HTTP2_NODE));
+    memset(hc, 0, sizeof(HTTP2_NODE));
     hc->max_connection      = HTTP2_MAX_CONNECTION;
     hc->connection_count    = 0;
     hc->list_addr           = NULL;
@@ -1413,8 +1411,90 @@ int test_GRPC_get_etcd_watch_request(){
     return TEST_RESULT_SUCCESSED;
 }
 
+int test_HTTP2_cluster_create(){
+    char error[1024];
+    HTTP2_CLUSTER *cluster = NULL;
+    HTTP2_cluster_create(&cluster, 0x0812301, "cluster-01", error);
+    ASSERT(cluster != NULL);
+    ASSERT( strcmp(cluster->cluster_name, "cluster-01") == 0 );
+    ASSERT(cluster->cluster_id == 0x0812301);
+    ASSERT(cluster->list_nodes == NULL);
+    ASSERT(cluster->leader_node == NULL );
+    ASSERT(cluster->node_count == 0);
+    
+    return TEST_RESULT_SUCCESSED;   
+}
+
+int test_create_group_of_service(){
+    char error[1024];
+    char cluster_name[1024];
+    char node_name[1024];
+
+    int services_count  = 0;
+    HTTP2_SERVICE services[3];
+    
+    int i = 0;
+    for(i = 0; i < 3; i++){
+        services[i].name_len = sprintf(services[i].name, "service-D%d", i);
+        services_count++;
+        int c = 0;
+        for(c = 0; c < 128; c++){
+            HTTP2_CLUSTER *cluster = NULL;
+            sprintf(cluster_name, "cluster-%d", c);
+            ASSERT( HTTP2_cluster_create(&cluster, c, cluster_name, error) == HTTP2_RET_OK );
+            services[i].clusters[c] = cluster;
+            int n = 0;
+            for(n = 0; n < 128; n++){
+                HTTP2_NODE* node = NULL;
+                sprintf(node_name, "node-%d", n);
+                ASSERT( HTTP2_node_create(&node, node_name, 1, error) == HTTP2_RET_OK);
+                services[i].clusters[c]->nodes[n] = node;
+            }
+        }
+        
+   }
+    
+    ASSERT(services_count == 3);
+    /* Test Search Service */
+    HTTP2_SERVICE *find_service = NULL;
+    for(i = 0; i < 3 ; i++){
+        if( strcmp(services[i].name, "service-D0") == 0 ){
+            find_service = &services[i];
+            break;
+        }
+    }
+    ASSERT( find_service != NULL );
+    
+    
+    /* Test Find Cluster */
+    HTTP2_CLUSTER *find_cluster = NULL;
+    for(i = 0; i < 128; i++){
+        if( strcmp(find_service->clusters[i]->cluster_name, "cluster-120") == 0 ){
+            find_cluster = find_service->clusters[i];
+            break;
+        }
+    }
+    ASSERT( find_cluster != NULL );
+    ASSERT( strcmp(find_cluster->cluster_name, "cluster-120") == 0 );
+    
+    /* Test Find Node */
+    HTTP2_NODE *find_node = NULL;
+    for(i = 0; i < 128; i++){
+        if( strcmp(find_cluster->nodes[i]->name, "node-18") == 0 ){
+            find_node = find_cluster->nodes[i];
+            break;
+        }
+    }
+    ASSERT( find_node != NULL );
+    ASSERT( strcmp(find_node->name, "node-18") == 0 );
+    
+    return TEST_RESULT_SUCCESSED;
+}
+
+
 
 void test_all(){
+    UNIT_TEST(test_HTTP2_cluster_create());
     //UNIT_TEST(test_HTTP2_open());
     /*UNIT_TEST(test_HTTP2_write());
     UNIT_TEST(test_HTTP2_decode());
@@ -1425,7 +1505,8 @@ void test_all(){
     UNIT_TEST(test_GRPC_gen_entry_ldap());  */
     //UNIT_TEST(test_HTTP2_send_message());
     //UNIT_TEST(test_GRPC_get_etcd_range_request());
-    UNIT_TEST(test_GRPC_get_etcd_watch_request());
+    //UNIT_TEST(test_GRPC_get_etcd_watch_request());
+    UNIT_TEST(test_create_group_of_service());
     //WAIT();
 }
 
