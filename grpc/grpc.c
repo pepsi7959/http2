@@ -414,8 +414,8 @@ int GRPC_gen_search_request(unsigned int tid, GRPC_BUFFER **buffer, const char *
     //TODO: add function get_scope_from_string()
     req.has_scope          = 1;
     req.scope              = GRPC_get_scope(scope);
-    req.has_recursive      = 0;
-    req.recursive          = 0;
+    req.has_recursive      = 1;
+    req.recursive          = (flags & 0x1); // flags bit 0 instead of recursive.
     
     //TODO: add attribute filter
     req.n_attributes       = nattrs;
@@ -555,6 +555,15 @@ int GRPC_get_ldap_reqsponse(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *
     int tmp_int             = 0;
     GRPC_BUFFER* buf        = NULL;
 
+    char *sbuff1;
+    char *sbuff2;
+    int slen;
+    int soffset;
+    int sindex;
+    char *sp_bs;
+    char *sp_dq;
+    int stotal;
+
     if( data == NULL ){
         if( error != NULL ) sprintf(error, "*data is NULL");
         return GRPC_RET_INVALID_PARAMETER;
@@ -601,6 +610,9 @@ int GRPC_get_ldap_reqsponse(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *
     }
 
     buf = (GRPC_BUFFER*)malloc(sizeof(GRPC_BUFFER)+sizeof(char)*2*data->len);
+    sbuff1 = (char*)malloc(sizeof(char)*2*data->len);
+    sbuff2 = (char*)malloc(sizeof(char)*2*data->len);
+    
     buf->len = 0;
     result->bstring = buf;
     
@@ -623,12 +635,68 @@ int GRPC_get_ldap_reqsponse(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *
             if(attr->n_values > 1){
                 blen += sprintf((char *)(buf->data+blen), "[");
             }
+
+            stotal = 0;
+
             for( k = 0; k < attr->n_values; k++){
-                if( k == 0){
-                    blen += sprintf((char *)(buf->data+blen), "\"%s\"", attr->values[k]);
-                }else{
-                    blen += sprintf((char *)(buf->data+blen), ",\"%s\"", attr->values[k]);
+                slen = sprintf(sbuff1, "%s", attr->values[k]);
+                *(sbuff1+slen) = 0;
+                soffset = sindex = stotal = 0;
+                *sbuff2 ="";
+                sp_bs = sp_dq = NULL;
+
+                do{
+                    sp_bs = strstr(sbuff1+soffset,"\\");
+                    sp_dq = strstr(sbuff1+soffset,"\"");
+
+                    soffset = 0;
+
+                    if (sp_bs != sp_dq)
+                    {
+                        if(((int)sp_bs<(int)sp_dq) && (sp_bs != NULL))
+                        {
+                            soffset = sp_bs - sbuff1;
+                        }
+                        else if(((int)sp_bs>(int)sp_dq) && (sp_dq != NULL))
+                        {
+                            soffset = sp_dq - sbuff1;
+                        }
+                        else if (sp_bs != NULL)
+                        {
+                            soffset = sp_bs - sbuff1;
+                        }
+                        else if (sp_dq != NULL)
+                        {
+                            soffset = sp_dq - sbuff1;
+                        }
+
+                        strncpy(sbuff2+stotal, sbuff1+sindex, soffset-sindex);
+                        stotal += (soffset-sindex);
+                        *(sbuff2+stotal) = '\\';
+                        stotal++;
+                        sindex = soffset;
+                        soffset++;
+                    }
+                }while((sp_bs!=NULL)||(sp_dq!=NULL));
+
+                if(stotal!=0)
+                {
+                    strncpy(sbuff2+stotal, sbuff1+sindex, slen-sindex);
+                    *(sbuff2+stotal+slen-sindex) = 0;
+                    if( k == 0){
+                        blen += sprintf((char *)(buf->data+blen), "\"%s\"", sbuff2);
+                    }else{
+                        blen += sprintf((char *)(buf->data+blen), ",\"%s\"", sbuff2);
+                    }
                 }
+                else
+                {  
+                    if( k == 0){
+                        blen += sprintf((char *)(buf->data+blen), "\"%s\"", sbuff1);
+                    }else{
+                        blen += sprintf((char *)(buf->data+blen), ",\"%s\"", sbuff1);
+                    }
+                }           
             }
             if(attr->n_values > 1){
                 blen += sprintf((char *)(buf->data+blen), "]");
@@ -648,7 +716,11 @@ int GRPC_get_ldap_reqsponse(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *
     data->cur = 0;
     
     pb__response__free_unpacked(response, NULL);
-    
+
+  
+    free(sbuff1);
+    free(sbuff2);
+   
     return GRPC_RET_OK;
 }
 
