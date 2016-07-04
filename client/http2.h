@@ -80,6 +80,7 @@ typedef struct _http2_message_t{
     struct _http2_message_t *prev;
     char group[HTTP2_MAX_SIZE_GROUP_NAME];      //Group of connection that use to specific 
     int service;                                //Service of GRPC
+    int command_type;                           //type of command
     HTTP2_BUFFER *buffer;
 }HTTP2_MESSAGES;
 
@@ -134,6 +135,7 @@ typedef struct _node_t{
     struct _node_t          *prev;
     HTTP2_CLNT_ADDR         *list_addr;
     char                    name[HTTP2_MAX_HOST_NAME];
+    unsigned long           id;
     int                     max_connection;
     int                     max_concurrence;
     int                     list_addr_count;
@@ -167,6 +169,28 @@ typedef struct _cluster_t{
     struct _cluster_t       *next;
     struct _cluster_t       *prev;
     
+    int                     routing_rule;
+    
+#define ROUND_ROBIN                     0
+#define MASTER_RATIO_WITH_ROUNDROBIN    1
+#define MASTER_RATIO_WITH_LEASTUTILIZE  2
+#define ACTIVE_STANDBY                  3
+
+    union{
+        struct{
+            int ratio;
+        }master_ratio_with_RoundRobin;
+        
+        struct{
+            int ratio;
+        }master_ratio_with_LeastUitilize;
+        
+        struct {
+            int ratio;
+        }active_standby;
+        
+    }routing_prarameter;
+    
     unsigned long           cluster_id;
     char                    cluster_name[HTTP2_MAX_CLUSTER_NAME];
 
@@ -194,7 +218,7 @@ extern HTTP2_NODE *HTTP2_NODES[];
 
 int HTTP2_service_create(HTTP2_SERVICE **service, char *service_name, char *error);
 int HTTP2_cluster_create(HTTP2_CLUSTER **cluster, unsigned long cluster_id, char *cluster_name, char *error);
-int HTTP2_node_create(HTTP2_NODE **hc, char *name, int max_connection, char *error);
+int HTTP2_node_create(HTTP2_NODE **hc, char *name, unsigned long id, int max_connection, char *error);
 int HTTP2_addr_add(HTTP2_NODE *hc, char *host, int port, int max_connection, char *error);
 int HTTP2_addr_add_by_cluster(HTTP2_NODE *hc, char *host, int port, int max_connection, char *group, char *cluster_name, unsigned long cluster_id, char *node_name, unsigned long node_id, char *key_name, int key_len, int link_status, int state, char *error);
 

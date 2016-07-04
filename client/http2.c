@@ -253,7 +253,7 @@ int HTTP2_open(HTTP2_NODE *hc, HTTP2_CONNECTION **hconn, char *error){
     
     if (addr->connection_count >= addr->max_connection){
         sprintf(error, "HTTP2 connection exceeds[%d:%d]",addr->connection_count, addr->max_connection);
-        return HTTP2_RET_UNAVAILABLE;
+        return HTTP2_RET_MAX_CONNECTION;
     }
 
     (void) memset (&hints, 0, sizeof(hints));
@@ -926,7 +926,7 @@ int HTTP2_send_message(HTTP2_NODE *hc, HTTP2_CONNECTION *conn, HTTP2_BUFFER *hea
     
 }
 
-int HTTP2_node_create(HTTP2_NODE **hc, char *name, int max_connection, char *error){
+int HTTP2_node_create(HTTP2_NODE **hc, char *name, unsigned long id, int max_connection, char *error){
     HTTP2_NODE *nhc          = NULL;
     if( hc == NULL ){
         if( error != NULL ) sprintf(error, "HTTP2_NODE** is NULL");
@@ -948,6 +948,7 @@ int HTTP2_node_create(HTTP2_NODE **hc, char *name, int max_connection, char *err
     nhc->list_addr           = NULL;
     nhc->max_concurrence     = HTTP2_MAX_CONCURRENCE;
     nhc->max_wbuffer         = HTTP2_MAX_WRITE_BUFFER_SIZE;
+    nhc->id                  = id;
     strcpy(nhc->name, name);
     *hc = nhc;
     return HTTP2_RET_OK;
@@ -1015,6 +1016,7 @@ int HTTP2_addr_add_by_cluster(HTTP2_NODE *hc, char *host, int port, int max_conn
         memcpy(addr->key_name, key_name, key_len);
     }
     
+    addr->key_len = key_len;
     hc->list_addr_count++;
     LINKEDLIST_APPEND(hc->list_addr, addr);
     
