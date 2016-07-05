@@ -258,7 +258,7 @@ int test_GRPC_gen_search_request(){
     attrs[0] = "toro";    
     attrs[1] = "ok";
     
-    ASSERT( GRPC_gen_search_request(0x01, &buffer, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", attrs, 2,0, error) == GRPC_RET_OK );
+    ASSERT( GRPC_gen_search_request(0x01, &buffer, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", attrs, 2,1,3, error) == GRPC_RET_OK );
     ASSERT( buffer->len >= 0);
     HEXDUMP(buffer->data, buffer->len);
     
@@ -268,6 +268,8 @@ int test_GRPC_gen_search_request(){
     ASSERT(decode_req->n_attributes == 2);
     ASSERT( strcmp( decode_req->attributes[0], "toro") == 0);
     ASSERT(decode_req->scope == PB__SEARCH_SCOPE__BaseObject);
+    ASSERT(decode_req->has_derefaliases == 1);
+    ASSERT(decode_req->derefaliases == 3);
     DEBUG("DN: %s", decode_req->basedn);
     ASSERT(strcmp(decode_req->basedn, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB") == 0);
     WAIT();
@@ -316,7 +318,7 @@ int test_GRPC_gen_modify_entry(){
 
 
 
-int test_GRPC_get_reqsponse(){
+int test_GRPC_get_response(){
     unsigned int tid    = 0;
     GRPC_BUFFER* buffer = NULL;
     Pb__Response res  = PB__RESPONSE__INIT;
@@ -337,7 +339,7 @@ int test_GRPC_get_reqsponse(){
     memset(data, 0, sizeof(GRPC_BUFFER));
     ASSERT( pb__response__pack(&res, data->data) == len );
     data->len = len;
-    ASSERT( GRPC_get_reqsponse(&tid, &buffer, data, error) == GRPC_RET_OK);
+    ASSERT( GRPC_get_response(&tid, &buffer, data, error) == GRPC_RET_OK);
     DEBUG("tid : %u, res.id : %lu\n", tid, res.id);
     ASSERT( tid == res.id );
     
@@ -348,7 +350,7 @@ int test_GRPC_get_reqsponse(){
 }
 
 
-int test_GRPC_get_ldap_reqsponse(){
+int test_GRPC_get_ldap_response(){
     LDAP_RESULT *result = NULL;
     Pb__Response res  = PB__RESPONSE__INIT;
     char error[1024];
@@ -363,6 +365,28 @@ int test_GRPC_get_ldap_reqsponse(){
     res.n_referrals     = 0;
     res.referrals       = NULL;
     
+    Pb__Entry *entry = NULL;
+    ATTRLIST *attr_list = calloc(1, sizeof(ATTRLIST));
+    attr_list->next = NULL;
+    attr_list->prev = NULL;
+    strcpy( attr_list->name, "objectClass");
+    VALLIST *val = calloc(1, sizeof(VALLIST));
+    strcpy( val->value, "subscriber" );
+    LINKEDLIST_APPEND( attr_list->vals, val);
+    
+    val = calloc(1, sizeof(VALLIST));
+    strcpy( val->value, "subscriber1" );
+    LINKEDLIST_APPEND( attr_list->vals, val);
+    
+    //LINKEDLIST_APPEND( attr_list, attr_list);
+    ASSERT( GRPC_gen_entry_ldap(&entry, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "objectClass", attr_list, error) == GRPC_RET_OK );
+
+    Pb__Entry **entrys = NULL;
+    entrys = calloc(1, sizeof(Pb__Entry *));
+    entrys[0] = entry;
+    res.n_entries = 1;
+    res.entries = entrys;
+    
     unsigned int len = pb__response__get_packed_size(&res);
     GRPC_BUFFER *data = NULL;//malloc(sizeof(GRPC_BUFFER)+sizeof(char)*len);
     ALLOCATE_BUFFER(data, (sizeof(GRPC_BUFFER)+sizeof(char)*len+5));
@@ -373,10 +397,12 @@ int test_GRPC_get_ldap_reqsponse(){
     insert_length(len, 4, &data->data[1]);
     HEXDUMP(data->data, 5);
     
-    ASSERT( GRPC_get_ldap_reqsponse(&result, data, error) == GRPC_RET_OK);
+    ASSERT( GRPC_get_ldap_response(&result, data, error) == GRPC_RET_OK);
     DEBUG("tid : %u, res.id : %lu\n", result->tid, res.id);
     ASSERT( result->tid == res.id );
     ASSERT( result->result_code == res.resultcode);
+    ASSERT( result->ldap_object != NULL );
+    ASSERT( strcasecmp(result->ldap_object->object_class, "subscribe") == 0);
     DEBUG("MathcdDN : %s", result->matchedDN);
     DEBUG("diagnosticMessage : %s", result->diagnosticMessage);
     return TEST_RESULT_SUCCESSED;
@@ -1952,13 +1978,13 @@ void test_all(){
     UNIT_TEST(test_Pb__Request());
     UNIT_TEST(test_Decode_from_data());
     UNIT_TEST(test_Pb__Response());  
-    UNIT_TEST(test_GRPC_gen_entry());
-    UNIT_TEST(test_GRPC_get_reqsponse());
-    UNIT_TEST(test_GRPC_gen_entry_ldap()); */
+    UNIT_TEST(test_GRPC_gen_entry());*/
+    UNIT_TEST(test_GRPC_get_ldap_response());
+    //UNIT_TEST(test_GRPC_gen_entry_ldap());
     //UNIT_TEST(test_GRPC_get_etcd_range_request());
     //UNIT_TEST(test_GRPC_gen_mod_entry_ldap());
-    UNIT_TEST(test_GRPC_gen_search_request());
-    //UNIT_TEST(test_GRPC_get_ldap_reqsponse());
+    //UNIT_TEST(test_GRPC_gen_search_request());
+    //UNIT_TEST(test_GRPC_get_ldap_response());
     //UNIT_TEST(test_GRPC_get_etcd_range_response());
     //UNIT_TEST(test_add_connection());
     //UNIT_TEST(test_GRPC_get_etcd_watch_request());
