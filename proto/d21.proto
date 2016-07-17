@@ -14,8 +14,8 @@ package pb;
 // The Add service definition.
 //service D21 {
   // Do processes the message
-//  rpc Do (Request) returns (Response);
-//  rpc ResolveAlias (Request) returns (Response);
+  //rpc Do (Request) returns (Response);
+  //rpc ResolveAlias (Request) returns (Response);
 //}
 
 // LDAP Search scope
@@ -39,6 +39,7 @@ enum EntryMethod {
     Add     = 1;
     Replace = 2;
     Delete  = 3;
+    ModDn   = 4;
 }
 
 // Request
@@ -55,6 +56,17 @@ message Request {
     Entry Entry                        = 8; // PUT, MOD
     string Dn                          = 9;
     bool Recursive                     = 10;
+    int32 DerefAliases                 = 11;
+    int32 SizeLimit                    = 12;
+    int32 TimeLimit                    = 13;
+    bool TypesOnly                     = 14;
+    ControlTypeString ControlString    = 15;
+}
+
+message ControlTypeString {
+    string ControlType     = 1;
+    bool Criticality       = 2;
+    string ControlValue    = 3;
 }
 
 // Entry represents on single Dn in LDAP
@@ -87,6 +99,7 @@ message Response {
     string ResultDescription           = 7;
     repeated Entry Entries             = 8;
     repeated string Referrals          = 9;
+    repeated string Controls           = 10;
 }
 
 // Meta data is used to return meta data to response
