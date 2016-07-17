@@ -139,7 +139,8 @@ int GRPC_gen_entry_ldap(Pb__Entry **entry, char *dn, char *objectclass, ATTRLIST
         }
         *entry = nentry;
     }
-    
+    (*entry)->has_method            = 1;
+    (*entry)->method                = PB__ENTRY_METHOD__Replace;
     (*entry)->dn                    = (char *)malloc(strlen(dn)+1);
     strcpy((*entry)->dn, dn);
 
@@ -285,12 +286,26 @@ int GRPC_gen_delete_request(unsigned int tid, GRPC_BUFFER **buffer, char *base_d
     //TODO: add function get_scope_from_string()
     req.has_scope          = 0;
     req.scope              = PB__SEARCH_SCOPE__BaseObject;
-    req.has_recursive      = 1;
-    req.recursive          = 1;
+    
+    if( (flags & 0x1) ){
+        req.has_recursive      = 1;
+        req.recursive          = 1;
+   }
     
     //TODO: add attribute filter
     req.n_attributes       = 0;
     req.attributes         = NULL;
+    
+    //TODO: ControlString
+    if( (flags & 0x2) ){
+        Pb__ControlTypeString control;
+        pb__control_type_string__init(&control);
+        control.controltype = "2.16.840.1.113730.3.4.2";
+        control.has_criticality = 1;
+        control.criticality = 1;
+        control.controlvalue = NULL;
+        req.controlstring = &control;
+    }
     
     len = pb__request__get_packed_size(&req);
     
@@ -395,7 +410,7 @@ int GRPC_gen_modify_request(unsigned int tid, GRPC_BUFFER **buffer, const char *
     return GRPC_RET_OK;
 }
 
-GRPC_gen_search_request(unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, const char *scope, const char *filter, char **attrs, int nattrs, int flags, int deref, char *error){
+int GRPC_gen_search_request(unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, const char *scope, const char *filter, char **attrs, int nattrs, int flags, int deref, char *error){
    
     //Generate Request
     static Pb__Request req;
@@ -585,6 +600,48 @@ static int GRPC_valuelist_add (VALLIST **vallist, char value[MAX_ATTR_VALUE_SIZE
     return GRPC_RET_OK;
 }
 
+int GRPC_get_message_response(Pb__Response **response, GRPC_BUFFER *data, char *error){
+    
+    int tmp_int         = 0;
+    Pb__Response *res   = NULL;
+        
+    if( response == NULL ){
+        if( error != NULL ) sprintf(error, "**response is NULL");
+        return GRPC_RET_INVALID_PARAMETER;
+    }
+    
+    if( data == NULL ){
+        if( error != NULL ) sprintf(error, "*data is NULL");
+        return GRPC_RET_INVALID_PARAMETER;
+    }
+
+    READBYTE(data->data, data->cur+1, 4, tmp_int); //1 is skiping encoding flage, 3 is number of size.
+    printf("[%d] > [%d]\n", tmp_int, data->len);
+    if( tmp_int > data->len){
+        
+        printf("Need more data to unpack [%d] > [%d]\n", tmp_int, data->len);
+        return GRPC_RET_NEED_MORE_DATA;
+    }
+    
+    data->cur += 5;//skipe encode flage and size
+    
+    res = pb__response__unpack(NULL, data->len-data->cur, data->data+data->cur);
+    
+    if( res == NULL ){
+        if( error != NULL ) sprintf(error, "pb__response__unpack return error");
+            return GRPC_RET_ERR_UNPACK;
+    }
+    
+    data->cur += tmp_int;
+    memmove(data->data, data->data+data->cur, data->len-data->cur);
+    data->len = data->len-data->cur;
+    data->cur = 0;
+    
+    *response = res;
+    
+    return GRPC_RET_OK;
+}
+
 int GRPC_get_ldap_response(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *error){
         
     LDAP_RESULT *result     = NULL;
@@ -643,6 +700,12 @@ int GRPC_get_ldap_response(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *e
     result->result_code = (response->has_resultcode)?response->resultcode:0;
     result->ldap_object = NULL;
     
+    if( response->n_referrals > 0){
+        strcpy(result->referral, response->referrals[0]);
+    }else{
+        result->referral[0] = 0;
+    }
+    
     if(response->matcheddn != NULL){
         strcpy(result->matchedDN, response->matcheddn);
     }
@@ -660,11 +723,11 @@ int GRPC_get_ldap_response(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *e
     
     blen += sprintf((char *)(buf->data+blen),"{");
     int i,j,k;
-    LDAP_OBJECT *tmp_obj = NULL; 
+    GRPC_LDAP_OBJECT *tmp_obj = NULL; 
     
     for( i = 0 ; i < response->n_entries ; i++){
         
-        tmp_obj = (LDAP_OBJECT*)calloc(1, sizeof(LDAP_OBJECT));    //create new object
+        tmp_obj = (GRPC_LDAP_OBJECT*)calloc(1, sizeof(GRPC_LDAP_OBJECT));    //create new object
         tmp_obj->next = NULL;
         tmp_obj->prev = NULL;
         tmp_obj->alist = NULL;

@@ -50,9 +50,9 @@ struct _attr_mod_list_t
     VALLIST             *vals;
 };
 
-struct _ldap_object{
-    struct _ldap_object *next;
-    struct _ldap_object *prev;
+struct ldap_object{
+    struct ldap_object *next;
+    struct ldap_object *prev;
     char                name[MAX_ATTR_NAME_SIZE];             //rdn name
     char                value[MAX_ATTR_VALUE_SIZE];           //rdn value
     char                object_class[MAX_ATTR_NAME_SIZE];     //objectClass
@@ -61,20 +61,31 @@ struct _ldap_object{
     struct _attr_list_t *atable[MAX_SIZE_INDEXING];           //make index for attibute
 };
 
+struct _ldap_ber
+{
+    struct _ldap_ber    *prev;
+    struct _ldap_ber    *next;
+    int                 size;
+    int                 len;
+    char                berval[1];
+}_ldap_ber;
+
 struct ldap_result_t{
     unsigned int        tid;
     GRPC_BUFFER         *bstring;
     int                 result_code;
     char                matchedDN[4096];
     char                diagnosticMessage[1024];
-    struct _ldap_object *ldap_object;
+    char                referral[1024];
+    struct ldap_object *ldap_object;
 };
 
 
 typedef struct ldap_result_t LDAP_RESULT;
 typedef struct _attr_list_t ATTRLIST;
 typedef struct _attr_mod_list_t MODLIST;
-typedef struct _ldap_object LDAP_OBJECT;
+typedef struct ldap_object GRPC_LDAP_OBJECT;
+typedef struct _ldap_ber GRPC_LDAP_BER;
 
 enum GRPC_SERVICE{
     GRPC_SERVICE_DO = 1,
