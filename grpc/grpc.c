@@ -764,7 +764,7 @@ int GRPC_get_ldap_response(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *e
                 slen = sprintf(sbuff1, "%s", attr->values[k]);
                 *(sbuff1+slen) = 0;
                 soffset = sindex = stotal = 0;
-                *sbuff2 ="";
+                sbuff2[0] = 0;
                 sp_bs = sp_dq = NULL;
 
                 do{

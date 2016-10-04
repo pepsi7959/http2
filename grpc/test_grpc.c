@@ -613,10 +613,10 @@ int update_connection( char *key, char *value){
     unsigned long cluster_id;
     unsigned long node_id;
 
-    int link_status = 0;
+    //int link_status = 0;
     int key_len     = 0;
-    int state       = 0;
-    int port        = 0;
+    //int state       = 0;
+    //int port        = 0;
     
     //damocles_d20_cluster_5c8f6b17c7dbdad6_node_193b7109e2e90a33_status
 	pp = strchr(key, '_'); // Ignore damocles key
@@ -631,13 +631,15 @@ int update_connection( char *key, char *value){
 	printf("cluster :%s\n", b);
     strcpy(cluster_name, b);
     cluster_id = (unsigned long)strtoul(b, NULL, 16);
-    
+    printf("cluster_id : %lu\n", cluster_id);
+
 	has_next('_');  //node
 	has_next('_');  //193b7109e2e90a33
 	printf("node :%s\n", b);	
     strcpy(node_name, b);	
     node_id = (unsigned long)strtoul(b, NULL, 16);
-    
+    printf("node_id : %lu\n", node_id);
+
     key_len = (pp-key);
     memcpy(key_name, key, key_len);//damocles_d20_cluster_5c8f6b17c7dbdad6_node_193b7109e2e90a33_
     key_name[key_len] = 0;
@@ -659,7 +661,7 @@ int update_connection( char *key, char *value){
         
         has_next('"');
         printf("Port :%s\n", b);
-        port = atoi(b);
+        //port = atoi(b);
         
         pp = strstr(value, "\"name\":\"");	
         pp += 8; // sizeof "\"name\":\""
@@ -2006,7 +2008,6 @@ int test_GRPC_get_etcd_watch_request(){
 }
 
 int test_GRPC_get_message_response(){
-    LDAP_RESULT *result = NULL;
     Pb__Response res  = PB__RESPONSE__INIT;
     char error[1024];
     res.has_id          = 1;
