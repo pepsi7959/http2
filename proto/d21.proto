@@ -6,9 +6,9 @@ package pb;
 
 //import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
-//option (gogoproto.marshaler_all)       = true;
+/* option (gogoproto.marshaler_all)       = true; */
 /* option (gogoproto.sizer_all)           = true; */
-//option (gogoproto.unmarshaler_all)     = true;
+/* option (gogoproto.unmarshaler_all)     = true; */
 /* option (gogoproto.goproto_getters_all) = false; */
 
 // The Add service definition.
@@ -35,11 +35,11 @@ enum RESTMethod {
 }
 
 enum EntryMethod {
-    Search  = 0;
-    Add     = 1;
-    Replace = 2;
-    Delete  = 3;
-    ModDn   = 4;
+    Unknown   = 0;
+    Add       = 1;
+    Replace   = 2;
+    Delete    = 3;
+    Increase  = 4;
 }
 
 // Request
@@ -61,6 +61,19 @@ message Request {
     int32 TimeLimit                    = 13;
     bool TypesOnly                     = 14;
     ControlTypeString ControlString    = 15;
+    uint64 GID                         = 16; // Group ID
+}
+
+message TxRequest {
+    uint64 ID                      = 1;
+    int64 Time                     = 2;
+    repeated Request Requests      = 3;
+}
+
+message TxResponse {
+    uint64 ID                          = 1;
+    int32 LastSuccessIndex             = 2;
+    Response  Response                 = 3;
 }
 
 message ControlTypeString {
@@ -73,8 +86,8 @@ message ControlTypeString {
 message Entry {
     /* option (gogoproto.goproto_getters) = true; */
     /* option (gogoproto.face)            = false; */
-    EntryMethod Method                 = 1;
-    string Dn                          = 2;
+    string Dn                          = 1;
+    bool ModDn                         = 2;
     repeated EntryAttribute Attributes = 3;
 }
 
@@ -82,8 +95,9 @@ message Entry {
 message EntryAttribute {
     /* option (gogoproto.goproto_getters) = true; */
     /* option (gogoproto.face)            = false; */
-    string Name            = 1;
-    repeated string Values = 2;
+    EntryMethod Method     = 1;
+    string Name            = 2;
+    repeated string Values = 3;
 }
 
 // Response
@@ -100,6 +114,7 @@ message Response {
     repeated Entry Entries             = 8;
     repeated string Referrals          = 9;
     repeated string Controls           = 10;
+    uint64 GID                         = 11; // Group ID
 }
 
 // Meta data is used to return meta data to response

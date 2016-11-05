@@ -27,8 +27,7 @@ unsigned char HTTP2_PREFACE[]                   = {0x50,0x52,0x49,0x20,0x2a,0x20
                                                     0x0d,0x0a,0x53,0x4d,0x0d,0x0a,0x0d,0x0a};
 unsigned char HTTP2_DEFAULT_FRAME_SETTING[]     = {0x00,0x00,0x00,0x04,0x00,0x00,0x00,0x00,0x00};
 unsigned char HTTP2_DEFAULT_FRAME_SETTING_ACK[] = {0x00,0x00,0x00,0x04,0x01,0x00,0x00,0x00,0x00};
-unsigned char HTTP2_DEFAULT_FRAME_WINDOWS[]     = {0x00,0x00,0x04,0x08,0x00,0x00,0x00,0x00  ,0x00,
-                                                    0x00,0x0e,0xff,0x01};
+unsigned char HTTP2_DEFAULT_FRAME_WINDOWS[]     = {0x00,0x00,0x04,0x08,0x00,0x00,0x00,0x00,0x00,0x00,0x0e,0xff,0x01};
 
 static int HTTP2_alloc_buffer(HTTP2_BUFFER **data, int len){
 	if (*data == NULL)
@@ -234,6 +233,18 @@ static int HTTP2_connect_setup_res(HTTP2_CONNECTION *conn, char *error){
         }
     }
     return HTTP2_RET_INVALID_PARAMETER;
+}
+
+int HTTP2_send_window_update(HTTP2_CONNECTION *conn, int streamID, int len, char *error){             
+    unsigned char buff[16];
+    unsigned char window_update_frame[32];
+    memcpy(window_update_frame, HTTP2_DEFAULT_FRAME_WINDOWS, sizeof(HTTP2_DEFAULT_FRAME_WINDOWS));
+    HTTP2_insert_length(streamID, 4, buff);
+    memcpy(&window_update_frame[5], buff, 4);
+    HTTP2_insert_length(len, 4, buff);
+    memcpy(&window_update_frame[9], buff, 4);
+    (void) HTTP2_send_direct_to_buffer(conn, window_update_frame, sizeof(HTTP2_DEFAULT_FRAME_WINDOWS), error);
+    return HTTP2_write_direct(conn, error); 
 }
 
 int HTTP2_open(HTTP2_NODE *hc, HTTP2_CONNECTION **hconn, char *error){ 
@@ -679,6 +690,15 @@ int HTTP2_decode(HTTP2_CONNECTION *conn, char *error){
                 }
                 memcpy(conn->usr_data->data + conn->usr_data->len, data->data, data->len);
                 conn->usr_data->len += data->len;
+
+                int r = HTTP2_send_window_update(conn, conn->frame_recv->streamID, data->len, error);
+                if( r != HTTP2_RET_OK && r != HTTP2_RET_SENT){
+                    printf("HTTP2_send_window_update error : %s", error);
+                }
+                r = HTTP2_send_window_update(conn, 0, data->len, error);
+                if( r != HTTP2_RET_OK && r != HTTP2_RET_SENT){
+                    printf("HTTP2_send_window_update error : %s", error);
+                }
             }
             break;
         case HTTP2_FRAME_HEADES:
@@ -926,7 +946,7 @@ int HTTP2_send_message(HTTP2_NODE *hc, HTTP2_CONNECTION *conn, HTTP2_BUFFER *hea
     
 }
 
-int HTTP2_node_create(HTTP2_NODE **hc, char *name, unsigned long id, int max_connection, char *error){
+int HTTP2_node_create(HTTP2_NODE **hc, char *name, unsigned long id, int max_connection, int max_concurrence, char *error){
     HTTP2_NODE *nhc          = NULL;
     if( hc == NULL ){
         if( error != NULL ) sprintf(error, "HTTP2_NODE** is NULL");
@@ -946,7 +966,7 @@ int HTTP2_node_create(HTTP2_NODE **hc, char *name, unsigned long id, int max_con
     nhc->max_connection      = (max_connection > 0)?max_connection:HTTP2_MAX_CONNECTION;
     nhc->connection_count    = 0;
     nhc->list_addr           = NULL;
-    nhc->max_concurrence     = HTTP2_MAX_CONCURRENCE;
+    nhc->max_concurrence     = (max_concurrence > 0)?max_concurrence:HTTP2_MAX_CONCURRENCE;
     nhc->max_wbuffer         = HTTP2_MAX_WRITE_BUFFER_SIZE;
     nhc->id                  = id;
     strcpy(nhc->name, name);

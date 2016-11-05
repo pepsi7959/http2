@@ -5,7 +5,7 @@
 #include "rpc.pb-c.h"
 
 
-#define MAX_ATTRIBUTE_VALUES    16
+#define MAX_ATTRIBUTE_VALUES    128
 #define MAX_ATTR_NAME_SIZE      256     //!-- DO NOT change value
 #define MAX_ATTR_VALUE_SIZE     8192    //!-- DO NOT change value
 #define MAX_SIZE_INDEXING       256     //!-- DO NOT change value
@@ -55,6 +55,7 @@ struct ldap_object{
     struct ldap_object *prev;
     char                name[MAX_ATTR_NAME_SIZE];             //rdn name
     char                value[MAX_ATTR_VALUE_SIZE];           //rdn value
+    char                dn[4096];                             //DN
     char                object_class[MAX_ATTR_NAME_SIZE];     //objectClass
     char                error[MAX_ATTR_VALUE_SIZE];           //error message
     struct _attr_list_t *alist;                               //attibute list
@@ -78,6 +79,7 @@ struct ldap_result_t{
     char                diagnosticMessage[1024];
     char                referral[1024];
     struct ldap_object *ldap_object;
+    void               *compatible_ldap_result;
 };
 
 
@@ -103,21 +105,20 @@ int GRPC_gen_entry_ldap(Pb__Entry **entry, char *dn, char *objectclass, ATTRLIST
 int GRPC_gen_mod_entry_ldap(Pb__Entry **entry, char *dn, char *objectclass, MODLIST *mode_list, char *error);
 
 int GRPC_gen_modify_entry(Pb__Entry **entry,char *dn, char *attr[128], int attr_len, char *error);
-int GRPC_gen_delete_request(unsigned int tid, GRPC_BUFFER **buffer, char *base_dn, int flags, char *error);
-int GRPC_gen_add_request(unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *entry, int flags, char *error);
-int GRPC_gen_modify_request(unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *entry, int flags, char *error);
-int GRPC_gen_search_request(unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, const char *scope, const char *filter, char **attrs, int nattrs, int flags, int deref, char *error);
+int GRPC_gen_delete_request(uint64_t gid, unsigned int tid, GRPC_BUFFER **buffer, char *base_dn, int flags, char *error);
+int GRPC_gen_add_request(uint64_t gid, unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *entry, int flags, char *error);
+int GRPC_gen_modify_request(uint64_t gid, unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *entry, int flags, char *error);
+int GRPC_gen_search_request(uint64_t gid, unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, const char *scope, const char *filter, char **attrs, int nattrs, int flags, int deref, char *error);
 
 int GRPC_get_response(unsigned int *tid, GRPC_BUFFER **json_response , GRPC_BUFFER *data, char *error);
 int GRPC_get_ldap_response(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *error);
+int GRPC_get_ldap_response_from_Pb(LDAP_RESULT **ldap_result, Pb__Response *response, int buf_len, char *error);
 
 int GRPC_get_etcd_range_request(GRPC_BUFFER **buffer, unsigned char *prefix, int prefix_len, unsigned char *range_end , int range_end_len, char *error);
 int GRPC_get_etcd_range_response(GRPC_BUFFER *buffer, ATTRLIST **alist, char *error);
 
 int GRPC_get_etcd_watch_request(GRPC_BUFFER **buffer, unsigned char *prefix, int prefix_len, unsigned char *range_end , int range_end_len, char *error);
 int GRPC_get_etcd_watch_response(GRPC_BUFFER *buffer, ATTRLIST **alist, char *error);
-
-int GRPC_get_message_response(Pb__Response **response, GRPC_BUFFER *data, char *error);
 
 int GRPC_gen_resolve();
 int GRPC_gen_register();
