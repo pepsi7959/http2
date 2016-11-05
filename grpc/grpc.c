@@ -22,6 +22,32 @@ int GRPC_get_scope(const char *scope){
 }
 
 /*
+Modify Operation follow RFC 4511
+ModifyRequest ::= [APPLICATION 6] SEQUENCE {
+     object          LDAPDN,
+     changes         SEQUENCE OF change SEQUENCE {
+          operation       ENUMERATED {
+               add     (0),
+               delete  (1),
+               replace (2),
+               ...  },
+          modification    PartialAttribute } }
+*/
+int GRPC_LDAP_modify_operation_mapping(int mod_type){
+    switch( mod_type ){
+        case 0 ://add 
+            return PB__ENTRY_METHOD__Add;
+        case 1 ://delete 
+            return PB__ENTRY_METHOD__Delete;
+        case 2 ://replace 
+            return PB__ENTRY_METHOD__Replace;
+        default:
+            return PB__ENTRY_METHOD__Unknown;
+    }
+    return PB__ENTRY_METHOD__Unknown;
+}
+
+/*
  * Find the first occurrence of find in s, where the search is limited to the
  * first slen characters of s.
  */
@@ -139,8 +165,8 @@ int GRPC_gen_entry_ldap(Pb__Entry **entry, char *dn, char *objectclass, ATTRLIST
         }
         *entry = nentry;
     }
-    (*entry)->has_method            = 1;
-    (*entry)->method                = PB__ENTRY_METHOD__Replace;
+    //(*entry)->has_method            = 1;
+    //(*entry)->method                = PB__ENTRY_METHOD__Replace;
     (*entry)->dn                    = (char *)malloc(strlen(dn)+1);
     strcpy((*entry)->dn, dn);
 
@@ -167,7 +193,9 @@ int GRPC_gen_entry_ldap(Pb__Entry **entry, char *dn, char *objectclass, ATTRLIST
         
         //TODO:
         attrs[attr_len]->values     = malloc(sizeof(char*) * MAX_ATTRIBUTE_VALUES);
-        
+        attrs[attr_len]->has_method = 1;
+        attrs[attr_len]->method = PB__ENTRY_METHOD__Add;
+
         VALLIST *t_vals = t_attrs->vals;
         int vals = 0;
         while( t_vals ){
@@ -199,8 +227,8 @@ int GRPC_gen_entry_ldap(Pb__Entry **entry, char *dn, char *objectclass, ATTRLIST
 int GRPC_gen_mod_entry_ldap(Pb__Entry **entry, char *dn, char *objectclass, MODLIST *mode_list, char *error){
     
     int attr_len                    = 0;
-    static int is_attrs_set         = 0;
-    static Pb__EntryAttribute *attrs[256];
+    int is_attrs_set         = 0;
+    Pb__EntryAttribute *attrs[256];
     
     if( *entry == NULL ){
         printf("create New\n");
@@ -212,8 +240,8 @@ int GRPC_gen_mod_entry_ldap(Pb__Entry **entry, char *dn, char *objectclass, MODL
         }
         *entry = nentry;
     }
-    (*entry)->has_method            = 1;
-    (*entry)->method                = PB__ENTRY_METHOD__Replace;
+    //(*entry)->has_method            = 1;
+    //(*entry)->method                = PB__ENTRY_METHOD__Replace;
     (*entry)->dn                    = (char *)malloc(strlen(dn)+1);
     strcpy((*entry)->dn, dn);
 
@@ -234,8 +262,8 @@ int GRPC_gen_mod_entry_ldap(Pb__Entry **entry, char *dn, char *objectclass, MODL
             attrs[attr_len]->name  = malloc(sizeof(char) * MAX_ATTR_NAME_SIZE);
             is_attrs_set++;
         }
-
-
+        attrs[attr_len]->has_method = 1;
+        attrs[attr_len]->method = GRPC_LDAP_modify_operation_mapping(t_attrs->operation);
         strcpy(attrs[attr_len]->name, t_attrs->name);
         
         //TODO:
@@ -269,7 +297,7 @@ int GRPC_gen_mod_entry_ldap(Pb__Entry **entry, char *dn, char *objectclass, MODL
     return GRPC_RET_OK;
 }
 
-int GRPC_gen_delete_request(unsigned int tid, GRPC_BUFFER **buffer, char *base_dn, int flags, char *error){
+int GRPC_gen_delete_request(uint64_t gid, unsigned int tid, GRPC_BUFFER **buffer, char *base_dn, int flags, char *error){
    
     //Generate Delete Request
     int len                 = 0;
@@ -277,6 +305,8 @@ int GRPC_gen_delete_request(unsigned int tid, GRPC_BUFFER **buffer, char *base_d
     
     req.has_id             = 1;
     req.id                 = tid;
+    req.has_gid            = 1;
+    req.gid                = gid;
     req.filter             = NULL;
     req.basedn             = (char *)base_dn;
     
@@ -329,7 +359,7 @@ int GRPC_gen_delete_request(unsigned int tid, GRPC_BUFFER **buffer, char *base_d
     return GRPC_RET_OK;
 }
 
-int GRPC_gen_add_request(unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *entry, int flags, char *error){
+int GRPC_gen_add_request(uint64_t gid, unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *entry, int flags, char *error){
    
     //Generate Request
     Pb__Request *req        = calloc(1,sizeof(Pb__Request));
@@ -337,6 +367,8 @@ int GRPC_gen_add_request(unsigned int tid, GRPC_BUFFER **buffer, const char *bas
     pb__request__init(req);
     req->has_id             = 1;
     req->id                 = tid;
+    req->has_gid             = 1;
+    req->gid                = gid;
     req->basedn             = NULL;
     req->dn                 = NULL;
     req->filter             = "(objectClass=*)";
@@ -369,25 +401,28 @@ int GRPC_gen_add_request(unsigned int tid, GRPC_BUFFER **buffer, const char *bas
     return GRPC_RET_OK;
 }
 
-int GRPC_gen_modify_request(unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *entry, int flags, char *error){
+int GRPC_gen_modify_request(uint64_t gid, unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *entry, int flags, char *error){
     
     //Generate Request
-    Pb__Request *req        = calloc(1,sizeof(Pb__Request));
+    static Pb__Request req;
+    //Pb__Request *req        = calloc(1,sizeof(Pb__Request));
     int len                 = 0;
-    pb__request__init(req);
+    pb__request__init(&req);
     
-    req->has_id             = 1;
-    req->id                 = tid;
-    req->basedn             = NULL;
-    req->dn                 = NULL;
-    req->filter             = "(objectClass=*)";
-    req->has_method         = 1;
-    req->method             = PB__RESTMETHOD__PUT;
+    req.has_id             = 1;
+    req.id                 = tid;
+    req.has_gid            = 1;
+    req.gid                = gid;
+    req.basedn             = NULL;
+    req.dn                 = NULL;
+    req.filter             = "(objectClass=*)";
+    req.has_method         = 1;
+    req.method             = PB__RESTMETHOD__PUT;
     
-    req->n_attributes       = 0;
-    req->entry              = entry;
+    req.n_attributes       = 0;
+    req.entry              = entry;
     
-    len = pb__request__get_packed_size(req);
+    len = pb__request__get_packed_size(&req);
     
     if(*buffer == NULL){
         *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*len);
@@ -401,7 +436,7 @@ int GRPC_gen_modify_request(unsigned int tid, GRPC_BUFFER **buffer, const char *
         return GRPC_RET_UNIMPLEMENT;
     }
     
-    if( pb__request__pack(req, (*buffer)->data) != len ){
+    if( pb__request__pack(&req, (*buffer)->data) != len ){
         if( error != NULL ) sprintf(error, "pb__request__pack return invalid length");
         return GRPC_RET_INVALID_LENGTH;
     }
@@ -410,7 +445,7 @@ int GRPC_gen_modify_request(unsigned int tid, GRPC_BUFFER **buffer, const char *
     return GRPC_RET_OK;
 }
 
-int GRPC_gen_search_request(unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, const char *scope, const char *filter, char **attrs, int nattrs, int flags, int deref, char *error){
+int GRPC_gen_search_request(uint64_t gid, unsigned int tid, GRPC_BUFFER **buffer, const char *base_dn, const char *scope, const char *filter, char **attrs, int nattrs, int flags, int deref, char *error){
    
     //Generate Request
     static Pb__Request req;
@@ -419,6 +454,8 @@ int GRPC_gen_search_request(unsigned int tid, GRPC_BUFFER **buffer, const char *
     
     req.has_id             = 1;
     req.id                 = tid;
+    req.has_gid            = 1;
+    req.gid                = gid;
     req.basedn             = (char *)base_dn;
     req.filter             = (char *)filter;
     req.dn                 = NULL;
@@ -646,7 +683,7 @@ int GRPC_get_ldap_response(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *e
         
     LDAP_RESULT *result     = NULL;
     Pb__Response *response  = NULL;
-    int blen                = 0;
+    unsigned int blen       = 0;
     int tmp_int             = 0;
     GRPC_BUFFER* buf        = NULL;
     VALLIST *vlist          = NULL;
@@ -722,34 +759,92 @@ int GRPC_get_ldap_response(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *e
     result->bstring = buf;
     
     blen += sprintf((char *)(buf->data+blen),"{");
-    int i,j,k;
+    unsigned int i,j,k;
+    unsigned int n_entries = response->n_entries;
+    unsigned int processed = 0;
+    unsigned int index;
+    unsigned int i_start;
+    unsigned int i_diff;
+    unsigned int duplicate;
     GRPC_LDAP_OBJECT *tmp_obj = NULL; 
+    char *ref_tmp        = (char*)malloc(sizeof(char)*2*data->len);
+    Pb__Entry *entry;
+
+    sprintf(ref_tmp, " ");
     
-    for( i = 0 ; i < response->n_entries ; i++){
-        
+    i_start = 0;
+    i_diff = 0;
+    while(processed<n_entries)    
+    {
         tmp_obj = (GRPC_LDAP_OBJECT*)calloc(1, sizeof(GRPC_LDAP_OBJECT));    //create new object
         tmp_obj->next = NULL;
         tmp_obj->prev = NULL;
         tmp_obj->alist = NULL;
-        
-        Pb__Entry *entry = response->entries[i];
-        
+
+        duplicate = 0;
+
+        for( i = i_start ; i < n_entries ; i++)
+        {
+            entry = response->entries[i];        
+            ref_object = GRPC_GetAttributeValues(entry, "objectClass");
+            if (strcmp(ref_object, ref_tmp) == 0)
+            {
+                duplicate = 1;
+                i_start = i;
+                break;
+            }
+            else if (i_diff == 0)
+            {
+                i_diff = i+1;
+                break;
+            }
+        }
+
+        strcpy(ref_tmp, ref_object);
+        entry = response->entries[i_start++];
         ref_object = GRPC_GetAttributeValues(entry, "objectClass");
-        
-        if( i == 0){
-            blen += sprintf((char *)(buf->data+blen), "\"%s\":[{", ref_object);
-        }else{
-            blen += sprintf((char *)(buf->data+blen), ",\"%s\":[{", ref_object);
+
+        if( duplicate == 0)
+        {
+            if (processed == 0)
+            {    
+                blen += sprintf((char *)(buf->data+blen), "\"%s\":[{", ref_object);
+            }
+            else
+            {
+                blen += sprintf((char *)(buf->data+blen), "],\"%s\":[{", ref_object);
+            }
+        }
+        else
+        {
+            blen += sprintf((char *)(buf->data+blen), ",{" );
+        }
+
+        if(i == n_entries)
+        {
+            i_diff = 0;
+        }
+
+        processed++;
+
+        strcpy(tmp_obj->object_class, ref_object);
+        if(entry->dn != NULL)
+        {
+            char *pos;
+            pos = strstr(entry->dn, "=");
+            strncpy(tmp_obj->name, entry->dn, pos-entry->dn);
+            pos++;
+            strncpy(tmp_obj->value, pos, strstr(entry->dn, ",")-pos);
+
+            strcpy(tmp_obj->dn, entry->dn);
         }
         
-        strcpy(tmp_obj->object_class, ref_object);
-        
         blen += sprintf((char *)(buf->data+blen), "\"dn\":\"%s\"", entry->dn);
+
+        alist = NULL;
         for( j = 0; j < entry->n_attributes; j++ ){
             Pb__EntryAttribute *attr = entry->attributes[j];
             blen += sprintf((char *)(buf->data+blen), ",\"%s\":", attr->name);
-            
-            
             
             if(attr->n_values > 1){
                 blen += sprintf((char *)(buf->data+blen), "[");
@@ -828,10 +923,18 @@ int GRPC_get_ldap_response(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *e
         }//!-- end for loop attribute
         tmp_obj->alist = alist;
         LINKEDLIST_APPEND(result->ldap_object, tmp_obj);
-        blen += sprintf((char *)(buf->data+blen), "}]");
+        blen += sprintf((char *)(buf->data+blen), "}");
+
+        
     }//!-- end for loop entrys
-    
-    blen += sprintf((char *)(buf->data + blen), "}");
+    if(processed)
+    {
+        blen += sprintf((char *)(buf->data + blen), "]}");
+    }
+    else
+    {
+        blen += sprintf((char *)(buf->data + blen), "}");
+    }
     buf->len = blen;
     
     data->cur += tmp_int;
@@ -844,6 +947,244 @@ int GRPC_get_ldap_response(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *e
   
     free(sbuff1);
     free(sbuff2);
+    free(ref_tmp);
+   
+    return GRPC_RET_OK;
+}
+
+int GRPC_get_ldap_response_from_Pb(LDAP_RESULT **ldap_result, Pb__Response *response, int buf_len, char *error){
+
+    LDAP_RESULT *result     = NULL;
+    unsigned int blen       = 0;
+    GRPC_BUFFER* buf        = NULL;
+    VALLIST *vlist          = NULL;
+    ATTRLIST *alist         = NULL;
+    char *ref_object        = NULL;
+
+    char *sbuff1;
+    char *sbuff2;
+    int slen;
+    int soffset;
+    int sindex;
+    char *sp_bs;
+    char *sp_dq;
+    int stotal;
+
+    if( ldap_result == NULL ){
+        if( error != NULL ) sprintf(error, "**LDAP_RESULT is NULL");
+        return GRPC_RET_INVALID_PARAMETER;
+    }
+
+    if( *ldap_result == NULL ){
+        result = calloc(1, sizeof(LDAP_RESULT));
+        *ldap_result = result;
+    }else{
+        result = *ldap_result;
+    }
+
+    result->tid = (response->has_id)?response->id:-1;
+    result->result_code = (response->has_resultcode)?response->resultcode:0;
+    result->ldap_object = NULL;
+    
+    if( response->n_referrals > 0){
+        strcpy(result->referral, response->referrals[0]);
+    }else{
+        result->referral[0] = 0;
+    }
+
+    if(response->matcheddn != NULL){
+        strcpy(result->matchedDN, response->matcheddn);
+    }
+
+    if(response->resultdescription != NULL){
+         strcpy(result->diagnosticMessage, response->resultdescription);
+    }
+
+    buf = (GRPC_BUFFER*)malloc(sizeof(GRPC_BUFFER)+sizeof(char)*2*buf_len);
+    sbuff1 = (char*)malloc(sizeof(char)*2*buf_len);
+    sbuff2 = (char*)malloc(sizeof(char)*2*buf_len);
+
+    buf->len = 0;
+    result->bstring = buf;
+
+    blen += sprintf((char *)(buf->data+blen),"{");
+    unsigned int i,j,k;
+    unsigned int n_entries = response->n_entries;
+    unsigned int processed = 0;
+    unsigned int index;
+    unsigned int i_start;
+    unsigned int i_diff;
+    unsigned int duplicate;
+    GRPC_LDAP_OBJECT *tmp_obj = NULL; 
+    char *ref_tmp        = (char*)malloc(sizeof(char)*2*buf_len);
+    Pb__Entry *entry;
+
+    i_start = 0;
+    i_diff = 0;
+    while(processed<n_entries)    
+    {
+        tmp_obj = (GRPC_LDAP_OBJECT*)calloc(1, sizeof(GRPC_LDAP_OBJECT));    //create new object
+        tmp_obj->next = NULL;
+        tmp_obj->prev = NULL;
+        tmp_obj->alist = NULL;
+
+        duplicate = 0;
+
+        for( i = i_start ; i < n_entries ; i++)
+        {
+            entry = response->entries[i];        
+            ref_object = GRPC_GetAttributeValues(entry, "objectClass");
+            if (strcmp(ref_object, ref_tmp) == 0)
+            {
+                duplicate = 1;
+                i_start = i;
+                break;
+            }
+            else if (i_diff == 0)
+            {
+                i_diff = i+1;
+                break;
+            }
+        }
+
+        entry = response->entries[i_start++];
+        ref_object = GRPC_GetAttributeValues(entry, "objectClass");
+        strcpy(ref_tmp, ref_object);
+
+        if( duplicate == 0)
+        {
+            if (processed == 0)
+            {    
+                blen += sprintf((char *)(buf->data+blen), "\"%s\":[{", ref_object);
+            }
+            else
+            {
+                blen += sprintf((char *)(buf->data+blen), "],\"%s\":[{", ref_object);
+            }
+        }
+        else
+        {
+            blen += sprintf((char *)(buf->data+blen), ",{" );
+        }
+
+        if(i == n_entries)
+        {
+            i_diff = 0;
+        }
+
+        processed++;
+
+        strcpy(tmp_obj->object_class, ref_object);
+        if(entry->dn != NULL)
+        {
+            char *pos;
+            pos = strstr(entry->dn, "=");
+            strncpy(tmp_obj->name, entry->dn, pos-entry->dn);
+            pos++;
+            strncpy(tmp_obj->value, pos, strstr(entry->dn, ",")-pos);
+
+            strcpy(tmp_obj->dn, entry->dn);
+        }
+        
+        blen += sprintf((char *)(buf->data+blen), "\"dn\":\"%s\"", entry->dn);
+
+        alist = NULL;
+        for( j = 0; j < entry->n_attributes; j++ ){
+            Pb__EntryAttribute *attr = entry->attributes[j];
+            blen += sprintf((char *)(buf->data+blen), ",\"%s\":", attr->name);
+            
+            if(attr->n_values > 1){
+                blen += sprintf((char *)(buf->data+blen), "[");
+            }
+
+            stotal = 0;
+    
+            vlist = NULL;
+            
+            for( k = 0; k < attr->n_values; k++){
+
+                GRPC_valuelist_add(&vlist, attr->values[k], error);
+                slen = sprintf(sbuff1, "%s", attr->values[k]);
+                *(sbuff1+slen) = 0;
+                soffset = sindex = stotal = 0;
+                *sbuff2 ="";
+                sp_bs = sp_dq = NULL;
+
+                do{
+                    sp_bs = strstr(sbuff1+soffset,"\\");
+                    sp_dq = strstr(sbuff1+soffset,"\"");
+
+                    soffset = 0;
+
+                    if (sp_bs != sp_dq)
+                    {
+                        if(((int)sp_bs<(int)sp_dq) && (sp_bs != NULL))
+                        {
+                            soffset = sp_bs - sbuff1;
+                        }
+                        else if(((int)sp_bs>(int)sp_dq) && (sp_dq != NULL))
+                        {
+                            soffset = sp_dq - sbuff1;
+                        }
+                        else if (sp_bs != NULL)
+                        {
+                            soffset = sp_bs - sbuff1;
+                        }
+                        else if (sp_dq != NULL)
+                        {
+                            soffset = sp_dq - sbuff1;
+                        }
+
+                        strncpy(sbuff2+stotal, sbuff1+sindex, soffset-sindex);
+                        stotal += (soffset-sindex);
+                        *(sbuff2+stotal) = '\\';
+                        stotal++;
+                        sindex = soffset;
+                        soffset++;
+                    }
+                }while((sp_bs!=NULL)||(sp_dq!=NULL));
+
+                if(stotal!=0)
+                {
+                    strncpy(sbuff2+stotal, sbuff1+sindex, slen-sindex);
+                    *(sbuff2+stotal+slen-sindex) = 0;
+                    if( k == 0){
+                        blen += sprintf((char *)(buf->data+blen), "\"%s\"", sbuff2);
+                    }else{
+                        blen += sprintf((char *)(buf->data+blen), ",\"%s\"", sbuff2);
+                    }
+                }
+                else
+                {  
+                    if( k == 0){
+                        blen += sprintf((char *)(buf->data+blen), "\"%s\"", sbuff1);
+                    }else{
+                        blen += sprintf((char *)(buf->data+blen), ",\"%s\"", sbuff1);
+                    }
+                }           
+            }//!-- end for loop values
+            GRPC_attrlist_add(&alist, attr->name, vlist, error);
+            if(attr->n_values > 1){
+                blen += sprintf((char *)(buf->data+blen), "]");
+            }
+        }//!-- end for loop attribute
+        tmp_obj->alist = alist;
+        LINKEDLIST_APPEND(result->ldap_object, tmp_obj);
+        blen += sprintf((char *)(buf->data+blen), "}");
+    }//!-- end for loop entrys
+    if(processed)
+    {
+        blen += sprintf((char *)(buf->data + blen), "]}");
+    }
+    else
+    {
+        blen += sprintf((char *)(buf->data + blen), "}");
+    }
+    buf->len = blen;
+    
+    free(sbuff1);
+    free(sbuff2);
+    free(ref_tmp);
    
     return GRPC_RET_OK;
 }
