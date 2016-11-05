@@ -218,7 +218,7 @@ extern HTTP2_NODE *HTTP2_NODES[];
 
 int HTTP2_service_create(HTTP2_SERVICE **service, char *service_name, char *error);
 int HTTP2_cluster_create(HTTP2_CLUSTER **cluster, unsigned long cluster_id, char *cluster_name, char *error);
-int HTTP2_node_create(HTTP2_NODE **hc, char *name, unsigned long id, int max_connection, char *error);
+int HTTP2_node_create(HTTP2_NODE **hc, char *name, unsigned long id, int max_connection, int max_concurrence, char *error);
 int HTTP2_addr_add(HTTP2_NODE *hc, char *host, int port, int max_connection, char *error);
 int HTTP2_addr_add_by_cluster(HTTP2_NODE *hc, char *host, int port, int max_connection, char *group, char *cluster_name, unsigned long cluster_id, char *node_name, unsigned long node_id, char *key_name, int key_len, int link_status, int state, char *error);
 
