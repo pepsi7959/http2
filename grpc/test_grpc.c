@@ -76,8 +76,6 @@ int test_Pb__Request(){
     
     Pb__Entry *entry        = malloc(sizeof(Pb__Entry));
     pb__entry__init(entry);
-    entry->has_method       = 0;
-    entry->method           = PB__ENTRY_METHOD__Add;
     entry->dn               = NULL;
     entry->dn               = malloc(sizeof(char)*1025);
     sprintf(entry->dn, "uid=000000000000935,ds=SUBSCRIBER,o=AIS,dc=C-NTDB");
@@ -258,7 +256,7 @@ int test_GRPC_gen_search_request(){
     attrs[0] = "toro";    
     attrs[1] = "ok";
     
-    ASSERT( GRPC_gen_search_request(0x01, &buffer, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", attrs, 2,1,3, error) == GRPC_RET_OK );
+    ASSERT( GRPC_gen_search_request(0x01, 0x01, &buffer, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "search", "(objectClass=*)", attrs, 2,1,3, error) == GRPC_RET_OK );
     ASSERT( buffer->len >= 0);
     HEXDUMP(buffer->data, buffer->len);
     
@@ -295,7 +293,7 @@ int test_GRPC_gen_delete_request(){
     buffer->data[0]         = 0;
     error[0]                = 0;
 
-    ASSERT( GRPC_gen_delete_request(0x01, &buffer, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", 3, error) == GRPC_RET_OK );
+    ASSERT( GRPC_gen_delete_request(0x01, 0x01, &buffer, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", 3, error) == GRPC_RET_OK );
     ASSERT( buffer->len >= 0);
     HEXDUMP(buffer->data, buffer->len);
     
@@ -524,7 +522,7 @@ int test_GRPC_gen_add_request(){
     ASSERT( GRPC_gen_entry_ldap(&entry, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", "objectClass", attr_list, error) == GRPC_RET_OK );
 
     
-    ASSERT( GRPC_gen_add_request(0x01, &buffer, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", NULL, 0, error) == GRPC_RET_OK );
+    ASSERT( GRPC_gen_add_request(0x01, 0x01, &buffer, "serviceId=1,serviceContextId=test_ais@3gpp.org,serviceProfileId=SERVPROF1,subdata=profile,ds=gup,subdata=services,uid=1234567890,ds=SUBSCRIBER,o=AIS,dc=C-NTDB", NULL, 0, error) == GRPC_RET_OK );
     ASSERT( buffer->len >= 0);
 
     decode_req  = pb__request__unpack(NULL, buffer->len, (void*)buffer->data);
@@ -2069,17 +2067,17 @@ void test_all(){
     UNIT_TEST(test_Decode_from_data());
     UNIT_TEST(test_Pb__Response());  
     UNIT_TEST(test_GRPC_gen_entry());*/
-    //UNIT_TEST(test_GRPC_get_ldap_response());
-    //UNIT_TEST(test_GRPC_gen_entry_ldap());
-    //UNIT_TEST(test_GRPC_get_etcd_range_request());
-    //UNIT_TEST(test_GRPC_gen_mod_entry_ldap());
-    //UNIT_TEST(test_GRPC_gen_search_request());
+    UNIT_TEST(test_GRPC_get_ldap_response());
+    UNIT_TEST(test_GRPC_gen_entry_ldap());
+    UNIT_TEST(test_GRPC_get_etcd_range_request());
+    UNIT_TEST(test_GRPC_gen_mod_entry_ldap());
+    UNIT_TEST(test_GRPC_gen_search_request());
     UNIT_TEST(test_GRPC_gen_delete_request());
-    //UNIT_TEST(test_GRPC_get_ldap_response());
-    //UNIT_TEST(test_GRPC_get_etcd_range_response());
-    //UNIT_TEST(test_add_connection());
-    //UNIT_TEST(test_GRPC_get_etcd_watch_request());
-    //UNIT_TEST(test_GRPC_get_message_response());
+    UNIT_TEST(test_GRPC_get_ldap_response());
+    UNIT_TEST(test_GRPC_get_etcd_range_response());
+    UNIT_TEST(test_add_connection());
+    UNIT_TEST(test_GRPC_get_etcd_watch_request());
+    UNIT_TEST(test_GRPC_get_message_response());
 }
 
 int main(){
