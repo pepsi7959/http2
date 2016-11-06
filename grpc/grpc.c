@@ -603,11 +603,11 @@ int GRPC_get_response(unsigned int *tid, GRPC_BUFFER **json_response , GRPC_BUFF
 }
 
 int GRPC_get_json_response(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *error){
-    
+    return 0;
 }
 
 int GRPC_get_ldap_object_response(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *error){
-    
+    return 0;
 }
 
 static int GRPC_attrlist_add (ATTRLIST **attrlist, char name[MAX_ATTR_NAME_SIZE], VALLIST *vallist, char *error){
@@ -762,7 +762,6 @@ int GRPC_get_ldap_response(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *e
     unsigned int i,j,k;
     unsigned int n_entries = response->n_entries;
     unsigned int processed = 0;
-    unsigned int index;
     unsigned int i_start;
     unsigned int i_diff;
     unsigned int duplicate;
@@ -870,11 +869,11 @@ int GRPC_get_ldap_response(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *e
 
                     if (sp_bs != sp_dq)
                     {
-                        if(((int)sp_bs<(int)sp_dq) && (sp_bs != NULL))
+                        if((sp_bs<sp_dq) && (sp_bs != NULL))
                         {
                             soffset = sp_bs - sbuff1;
                         }
-                        else if(((int)sp_bs>(int)sp_dq) && (sp_dq != NULL))
+                        else if((sp_bs>sp_dq) && (sp_dq != NULL))
                         {
                             soffset = sp_dq - sbuff1;
                         }
@@ -1011,7 +1010,6 @@ int GRPC_get_ldap_response_from_Pb(LDAP_RESULT **ldap_result, Pb__Response *resp
     unsigned int i,j,k;
     unsigned int n_entries = response->n_entries;
     unsigned int processed = 0;
-    unsigned int index;
     unsigned int i_start;
     unsigned int i_diff;
     unsigned int duplicate;
@@ -1107,7 +1105,7 @@ int GRPC_get_ldap_response_from_Pb(LDAP_RESULT **ldap_result, Pb__Response *resp
                 slen = sprintf(sbuff1, "%s", attr->values[k]);
                 *(sbuff1+slen) = 0;
                 soffset = sindex = stotal = 0;
-                *sbuff2 ="";
+                sbuff2[0] = 0;
                 sp_bs = sp_dq = NULL;
 
                 do{
@@ -1118,11 +1116,11 @@ int GRPC_get_ldap_response_from_Pb(LDAP_RESULT **ldap_result, Pb__Response *resp
 
                     if (sp_bs != sp_dq)
                     {
-                        if(((int)sp_bs<(int)sp_dq) && (sp_bs != NULL))
+                        if((sp_bs<sp_dq) && (sp_bs != NULL))
                         {
                             soffset = sp_bs - sbuff1;
                         }
-                        else if(((int)sp_bs>(int)sp_dq) && (sp_dq != NULL))
+                        else if((sp_bs>sp_dq) && (sp_dq != NULL))
                         {
                             soffset = sp_dq - sbuff1;
                         }
