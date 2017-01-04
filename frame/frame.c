@@ -14,6 +14,66 @@ HTTP2_FRAME_FORMAT * HTTP2_frame_create(){
     return frame;
 }
 
+
+int HTTP2_PLAYLOAD_FREE( HTTP2_FRAME_FORMAT *frame ){
+    switch( frame->type ){
+        case HTTP2_FRAME_DATA:
+            if( frame->data_playload != NULL ){
+                if( frame->data_playload->data != NULL ){
+                    free( frame->data_playload->data );
+                }
+                free( frame->data_playload );
+                frame->data_playload = NULL;
+            }
+            break;
+        case HTTP2_FRAME_HEADES:
+            if( frame->headers_playload != NULL ){
+                free( frame->headers_playload );
+                frame->headers_playload = NULL;
+            }
+            break;
+        case HTTP2_FRAME_PRIORITY:
+        if( frame->priority_playload != NULL ){
+                free( frame->priority_playload );
+                frame->priority_playload = NULL;
+            }
+            break;
+        case HTTP2_FRAME_SETTINGS:
+            if( frame->settings_playload != NULL ){
+                free( frame->settings_playload );
+                frame->settings_playload = NULL;
+            }
+            break;
+        case HTTP2_FRAME_RST_STREAM:
+        case HTTP2_FRAME_PUSH_PROMISE:
+        case HTTP2_FRAME_PING:
+        case HTTP2_FRAME_GOAWAY:
+        case HTTP2_FRAME_WINDOW_UPDATE:
+            if( frame->update_playload != NULL ){
+                free( frame->update_playload );
+                frame->update_playload = NULL;
+            }
+            break;
+        case HTTP2_FRAME_CONTINUATION:
+        default:
+            //TODO: free data if there are data on the playload
+            break;
+    }
+    return HTTP2_RETURN_NO_ERROR;
+}
+
+int HTTP2_FRAME_FREE(HTTP2_FRAME_FORMAT *frame){
+
+    if( frame == NULL){
+        return HTTP2_RETURN_NULL_POINTER;
+    }
+
+    HTTP2_PLAYLOAD_FREE(frame );
+    free( frame );
+
+    return HTTP2_RETURN_NO_ERROR;
+}
+
 void * HTTP2_playload_create(int ftype){
     switch(ftype){
         case HTTP2_FRAME_DATA:

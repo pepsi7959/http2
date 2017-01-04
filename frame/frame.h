@@ -94,11 +94,12 @@ typedef struct HTTP2_FRAME_FORMAT{
 
 }HTTP2_FRAME_FORMAT;
 
-
 HTTP2_FRAME_FORMAT * HTTP2_frame_create();
 int HTTP2_frame_decode(HTTP2_FRAME_BUFFER *buffer, HTTP2_FRAME_FORMAT **frame, char *error);
 void * HTTP2_playload_create(int ftype);
 int HTTP2_playload_decode(HTTP2_FRAME_BUFFER *buffer, HTTP2_FRAME_FORMAT *frame, char *error);
 int HTTP2_FRAME_add_playload(HTTP2_FRAME_FORMAT **frame, int type, void *playload, unsigned int streamID);
+int HTTP2_FRAME_FREE( HTTP2_FRAME_FORMAT *frame );
+int HTTP2_PLAYLOAD_FREE( HTTP2_FRAME_FORMAT *frame );
 
 #endif 
