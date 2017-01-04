@@ -125,6 +125,7 @@ extern HEADER_FIELD static_table[];
 int dynamic_table_init(int size);
 int dynamic_table_update(int size);
 int dynamic_table_add(DYNAMIC_TABLE *dynamic, char *name, char *value, char *error);
+int dynamic_table_free(DYNAMIC_TABLE *dynamic, char *error);
 int dynamic_table_search(DYNAMIC_TABLE *dynamic_table ,char *name, char *value, int sensitive, int *isMatch, char *error);
 int dynamic_table_replace(char *name, char *value);
 int dynamic_table_delete(char *name);

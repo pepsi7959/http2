@@ -125,6 +125,22 @@ HEADER_FIELD STATIC_TABLE[] = {
 	
 };
 
+int dynamic_table_free(DYNAMIC_TABLE *dynamic,char *error){
+
+    if( dynamic == NULL ){
+        if( error != NULL) sprintf(error, "DYNAMIC_TABLE* was NULL");
+        return HPACK_RETURN_NULL_POINTER;
+    }
+    HEADER_FIELD *h_field = dynamic->header_fields;
+    while( h_field ){
+        LIST_REMOVE(dynamic->header_fields, h_field);
+        free( h_field );
+        h_field = dynamic->header_fields;
+    }
+    free( dynamic );
+    return HPACK_RETURN_SUCCESS;
+}
+
 int dynamic_table_add(DYNAMIC_TABLE *dynamic, char *name, char *value, char *error){
     if( dynamic == NULL ){
         if( error != NULL) sprintf(error, "DYNAMIC_TABLE* was NULL");
