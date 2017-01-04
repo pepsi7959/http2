@@ -4,19 +4,30 @@ syntax = "proto3";
 
 package pb;
 
-//import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+message TxBeginRequest {}
 
-/* option (gogoproto.marshaler_all)       = true; */
-/* option (gogoproto.sizer_all)           = true; */
-/* option (gogoproto.unmarshaler_all)     = true; */
-/* option (gogoproto.goproto_getters_all) = false; */
+message TxBeginResponse {
+    uint64  TID                        = 1;
+    Metadata Metadata                  = 2;
+}
 
-// The Add service definition.
-//service D21 {
-  // Do processes the message
-  //rpc Do (Request) returns (Response);
-  //rpc ResolveAlias (Request) returns (Response);
-//}
+message TxCommitRequest {
+    uint64  TID                        = 1;
+}
+
+message TxCommitResponse {
+    uint64  TID                        = 1;
+    Metadata Metadata                  = 2;
+}
+
+message TxRollbackRequest {
+    uint64  TID                        = 1;
+}
+
+message TxRollbackResponse {
+    uint64  TID                        = 1;
+    Metadata Metadata                  = 2;
+}
 
 // LDAP Search scope
 enum SearchScope {
@@ -26,12 +37,13 @@ enum SearchScope {
 }
 
 enum RESTMethod {
-    UNKNOWN = 0;
-    GET     = 1;
-    PUT     = 2;
-    POST    = 3;
-    DELETE  = 4;
-    SYNC    = 5;
+    UNKNOWN    = 0;
+    GET        = 1;
+    PUT        = 2;
+    POST       = 3;
+    DELETE     = 4;
+    SYNC       = 5;
+    QGET       = 6;
 }
 
 enum EntryMethod {
@@ -40,6 +52,17 @@ enum EntryMethod {
     Replace   = 2;
     Delete    = 3;
     Increase  = 4;
+}
+
+enum TxMethod {
+    TXUNKNOWN  = 0;
+    TXBEGIN    = 1;
+    TXDO       = 2;
+    TXCOMMIT   = 3;
+    TXROLLBACK = 4;
+    TXUNDO     = 5;
+    TXLOCK     = 6;
+    TXSTORE    = 7;
 }
 
 // Request
@@ -62,6 +85,8 @@ message Request {
     bool TypesOnly                     = 14;
     ControlTypeString ControlString    = 15;
     uint64 GID                         = 16; // Group ID
+    uint64 TID                         = 17; // Transaction ID
+    TxMethod TxMethod                  = 18; // Transcation Method
 }
 
 message TxRequest {
@@ -105,20 +130,22 @@ message Response {
     /* option (gogoproto.goproto_getters) = true; */
     /* option (gogoproto.face)            = false; */
     uint64 ID                          = 1;
-    uint32 ResultCode                  = 2;
-    uint64 RaftIndex                   = 3;
-    uint64 RaftTerm                    = 4;
-    uint64 ClusterID                   = 5;
-    string MatchedDn                   = 6;
-    string ResultDescription           = 7;
-    repeated Entry Entries             = 8;
-    repeated string Referrals          = 9;
-    repeated string Controls           = 10;
-    uint64 GID                         = 11; // Group ID
+    uint64 GID                         = 2; // Group ID
+    Metadata Metadata                  = 3;                
+    uint32 ResultCode                  = 4;
+    string MatchedDn                   = 5;
+    string ResultDescription           = 6;
+    repeated Entry Entries             = 7;
+    repeated string Referrals          = 8;
+    repeated string Controls           = 9;
+    uint64 TID                         = 10; // Tx ID
+    
 }
 
 // Meta data is used to return meta data to response
 message Metadata {
-    uint64 NodeID    = 1;
-    uint64 ClusterID = 2;
+    uint64 NodeID                      = 1;
+    uint64 ClusterID                   = 2;
+    uint64 RaftIndex                   = 3;
+    uint64 RaftTerm                    = 4;
 }
