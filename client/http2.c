@@ -224,7 +224,8 @@ static int HTTP2_connect_setup_res(HTTP2_CONNECTION *conn, char *error){
     if(frame->type == HTTP2_FRAME_SETTINGS){
         HTTP2_send_direct_to_buffer(conn, HTTP2_DEFAULT_FRAME_SETTING_ACK, sizeof(HTTP2_DEFAULT_FRAME_SETTING), error);
         HTTP2_send_direct_to_buffer(conn, HTTP2_DEFAULT_FRAME_WINDOWS, sizeof(HTTP2_DEFAULT_FRAME_WINDOWS), error);
-        r = HTTP2_write_direct(conn, error);   
+        r = HTTP2_write_direct(conn, error);
+        HTTP2_FRAME_FREE(frame);
         if( r == HTTP2_RET_OK || r == HTTP2_RET_SENT){
             return HTTP2_RET_OK;
         }else{
@@ -262,7 +263,7 @@ int HTTP2_open(HTTP2_NODE *hc, HTTP2_CONNECTION **hconn, char *error){
     
     addr = HTTP2_get_addr(hc);
     
-    if (addr->connection_count >= addr->max_connection){
+    if (addr->connection_count > addr->max_connection){
         sprintf(error, "HTTP2 connection exceeds[%d:%d]",addr->connection_count, addr->max_connection);
         return HTTP2_RET_MAX_CONNECTION;
     }
@@ -626,13 +627,30 @@ int HTTP2_close(HTTP2_NODE *hc, int no, char *error){
         free(conn->w_buffer);
         conn->w_buffer = NULL;
     }
-    
+
     if (conn->r_buffer != NULL)
     {
         free(conn->r_buffer);
         conn->r_buffer = NULL;
     }
 
+    if (conn->frame_recv != NULL){
+        HTTP2_FRAME_FREE(conn->frame_recv);
+    }
+
+    if (conn->usr_data != NULL){
+        free(conn->usr_data);
+    }
+
+    if (conn->enc != NULL){
+        dynamic_table_free(conn->enc, NULL);
+        conn->enc = NULL;
+    }
+
+    if (conn->dec != NULL){
+        dynamic_table_free(conn->dec, NULL);
+        conn->dec = NULL;
+    }
     (void) shutdown (conn->sock, SHUT_WR);
     while ((recv(conn->sock, buff, sizeof(buff), 0) > 0)&& ( i<100 ) ) ++(i);
     if (close(conn->sock) != 0)
@@ -700,8 +718,10 @@ int HTTP2_decode(HTTP2_CONNECTION *conn, char *error){
                     printf("HTTP2_send_window_update error : %s", error);
                 }
             }
+            conn->concurrent_count--;
             break;
         case HTTP2_FRAME_HEADES:
+            printf("Flags: %d\n", conn->frame_recv->flags);
             printf("Obtained HTTP2_FRAME_HEADES Frame\n");
             break;
         case HTTP2_FRAME_PRIORITY:
@@ -941,7 +961,7 @@ int HTTP2_send_message(HTTP2_NODE *hc, HTTP2_CONNECTION *conn, HTTP2_BUFFER *hea
     }
     
     conn->streamID  += 2;
-        
+    conn->concurrent_count++;
     return HTTP2_RET_OK;
     
 }
