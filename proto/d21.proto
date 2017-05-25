@@ -4,29 +4,57 @@ syntax = "proto3";
 
 package pb;
 
-message TxBeginRequest {}
+/* import "github.com/gogo/protobuf/gogoproto/gogo.proto"; */
+
+/* option (gogoproto.marshaler_all)       = true; */
+/* option (gogoproto.sizer_all)           = true; */
+/* option (gogoproto.unmarshaler_all)     = true; */
+/* option (gogoproto.goproto_getters_all) = false; */
+
+// The Add service definition.
+/*
+service D21 {
+  rpc Do (Request) returns (Response);
+  rpc ResolveAlias (Request) returns (Response);
+  rpc AtomicAdd (Request) returns (Response);
+  rpc TxBegin (TxBeginRequest) returns (TxBeginResponse);
+  rpc TxDo (Request) returns (Response);
+  rpc TxCommit (TxCommitRequest) returns (TxCommitResponse);
+  rpc TxRollback (TxRollbackRequest) returns (TxRollbackResponse);
+  rpc GetStream (Request) returns (stream Response);
+}
+*/
+
+message TxBeginRequest {
+    uint64  ID                         = 1;
+}
 
 message TxBeginResponse {
     uint64  TID                        = 1;
     Metadata Metadata                  = 2;
+    uint64  ID                         = 3;
 }
 
 message TxCommitRequest {
     uint64  TID                        = 1;
+    uint64  ID                         = 2;
 }
 
 message TxCommitResponse {
     uint64  TID                        = 1;
     Metadata Metadata                  = 2;
+    uint64  ID                         = 3;
 }
 
 message TxRollbackRequest {
     uint64  TID                        = 1;
+    uint64  ID                         = 2;
 }
 
 message TxRollbackResponse {
     uint64  TID                        = 1;
     Metadata Metadata                  = 2;
+    uint64  ID                         = 3;
 }
 
 // LDAP Search scope
@@ -87,6 +115,11 @@ message Request {
     uint64 GID                         = 16; // Group ID
     uint64 TID                         = 17; // Transaction ID
     TxMethod TxMethod                  = 18; // Transcation Method
+    //uint64 UUID                        = 19; // Unique ID internally used for triggering
+    string ApplicationName             = 19;
+    string ApplicationMethod           = 20;
+    uint32 ApplicationVersion          = 21;
+    string ApplicationPayload          = 22;
 }
 
 message TxRequest {
@@ -131,7 +164,7 @@ message Response {
     /* option (gogoproto.face)            = false; */
     uint64 ID                          = 1;
     uint64 GID                         = 2; // Group ID
-    Metadata Metadata                  = 3;                
+    Metadata Metadata                  = 3;
     uint32 ResultCode                  = 4;
     string MatchedDn                   = 5;
     string ResultDescription           = 6;
@@ -139,7 +172,13 @@ message Response {
     repeated string Referrals          = 8;
     repeated string Controls           = 9;
     uint64 TID                         = 10; // Tx ID
-    
+    uint32 StreamFlag                  = 11; // 0: Done, 1: StreamEntryResponse
+    uint32 StatusCode                  = 12;
+    string Status                      = 13;
+    string StatusCodeMessage           = 14;
+    string Message                     = 15;
+    string Data                        = 16;
+    uint64 Count                       = 17;
 }
 
 // Meta data is used to return meta data to response
