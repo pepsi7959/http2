@@ -3,10 +3,13 @@
  #include "common.h"
  #include "hpack.h"
  #include "frame.h"
+ #include "control.h"
+#include "hmap.h"
+#include <stdint.h>
 
 #define HTTP2_MAX_STRING_HOST                   128
 #define HTTP2_MAX_CONNECTION                    4096
-#define HTTP2_MAX_CONCURRENCE                   32
+#define HTTP2_MAX_CONCURRENCE                   2048
 #define HTTP2_MAX_HOST_NAME                     1024
 #define HTTP2_MAX_CLUSTER_NAME                  1024
 #define HTTP2_MAX_WRITE_BUFFER_SIZE             (4*1024*1024)
@@ -28,6 +31,8 @@ enum HTTP2_CONNECTION_STATE{
 };
 
 enum HTTP2_RET_CODE{
+    HTTP2_RET_REQUIRE_READ      = 6,
+    HTTP2_RET_REQUIRE_WRITE     = 5,
     HTTPP_RET_DATA_AVAILABLE    = 4,
     HTTP2_RET_NEED_MORE_DATA    = 3,
     HTTP2_RET_READY             = 2,
@@ -41,6 +46,7 @@ enum HTTP2_RET_CODE{
     HTTP2_RET_ERR_SEND          = -6,
     HTTP2_RET_ERR_DECODE        = -7,
     HTTP2_RET_ERR_ENCODE        = -8,
+    HTTP2_RET_MAX_STREAM        = -9,
 };
 
 typedef struct _clnt_addr_t{
@@ -81,8 +87,21 @@ typedef struct _http2_message_t{
     char group[HTTP2_MAX_SIZE_GROUP_NAME];      //Group of connection that use to specific 
     int service;                                //Service of GRPC
     int command_type;                           //type of command
+    unsigned int tid;                           //tid is message id, 
+    uint64_t gid;                               //gid is group id of requests.
+    struct timeval create_time;                 //create queue
     HTTP2_BUFFER *buffer;
+    int service_type;                           //type of grpc service is used to select decode function.
 }HTTP2_MESSAGES;
+
+typedef struct _stream_t{
+    struct _stream_t        *next;
+    struct _stream_t        *prev;
+    unsigned int            s_ID;
+    HTTP2_BUFFER            *s_usr_data;
+    FLOW_CONTROL            s_flow_control;
+    QUOTA_CONTROL           send_quota;         //use for controling outbound request.
+}HTTP2_STREAM;
 
 typedef struct _connection_t{
     struct _connection_t    *next;
@@ -120,7 +139,7 @@ typedef struct _connection_t{
     unsigned char           recv_count;
     unsigned char           send_count;
     
-    int                     streamID;
+    unsigned int            streamID;
     int                     state;
     
     HTTP2_CLNT_ADDR         *addr_info;
@@ -128,6 +147,14 @@ typedef struct _connection_t{
     DYNAMIC_TABLE           *dec;
     HTTP2_BUFFER            *usr_data;
     HTTP2_FRAME_FORMAT      *frame_recv;
+    FLOW_CONTROL            flow_control;
+    HMAP_DB                 *stream_hmap_db;
+    HTTP2_STREAM            *stream_info;
+    HMAP_DB                 *service_mapping_db;
+    unsigned int            max_send_quota;
+    int                     max_streams;
+    int                     stream_count;
+    QUOTA_CONTROL           send_quota;
 }HTTP2_CONNECTION;
 
 typedef struct _node_t{
@@ -236,6 +263,16 @@ int HTTP2_insert_length(unsigned int len, int nlen, unsigned char *data);
 int HTTP2_send_message(HTTP2_NODE *hc, HTTP2_CONNECTION *conn, HTTP2_BUFFER *header_block, int hflags, HTTP2_BUFFER *data, int bflag, char *error); /* Copy data to buffer's connection */
 int HTTP2_stream_open(int streamID);
 int HTTP2_stream_close(int streamID);
+
+int HTTP2_opertate_headers(HTTP2_CONNECTION *conn, char *error);
+int HTTP2_handle_data(HTTP2_CONNECTION *conn, char *error);
+int HTTP2_handle_RSTstream(HTTP2_CONNECTION *conn, char *error);
+int HTTP2_handle_settings(HTTP2_CONNECTION *conn, char *error);
+int HTTP2_handle_ping(HTTP2_CONNECTION *conn, char *error);
+int HTTP2_handle_go_away(HTTP2_CONNECTION *conn, char *error);
+int HTTP2_handle_window_update(HTTP2_CONNECTION *conn, char *error);
+
+int HTTP2_is_connection_ready(HTTP2_CONNECTION *conn);
 
 int HTTP2_send_msg_to_queue(char *group, HTTP2_BUFFER *buffer);
 

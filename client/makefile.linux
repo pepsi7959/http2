@@ -23,15 +23,26 @@ PROTO_PATH=./../proto
 PROTO_INCLUDE=-I${PROTO_PATH}
 PROTO_SRC=${PROTO_PATH}/d21.pb-c.c
 
-KV_SRC=${PROTO_PATH}/kv.pb-c.c
+ETCD_PATH=./../proto
+ETCD_INCLUDE=-I${ETCD_PATH}
+ETCD_SRC=${ETCD_PATH}/rpc.pb-c.c
 
-AUTH_SRC=${PROTO_PATH}/auth.pb-c.c
+KV_PATH=./../proto
+KV_INCLUDE=-I${KV_PATH}
+KV_SRC=${KV_PATH}/kv.pb-c.c
 
-ETCD_RPC_SRC=${PROTO_PATH}/rpc.pb-c.c
+AUTH_PATH=./../proto
+AUTH_INCLUDE=-I${AUTH_PATH}
+AUTH_SRC=${AUTH_PATH}/auth.pb-c.c
+
+HMAP_PATH=./../../../hash_map
+HMAP_INCLUDE=-I${HMAP_PATH}
+HMAP_SRC=${HMAP_PATH}/hmap.c
 
 clean:
 	rm test_http2
 
 
 test_http2: test_http2.c http2.c
-	gcc -g -Wall -I. ${PROTO_INCLUDE} ${GRPC_INCLUDE} ${COMMON_INCLUDE} ${FRAME_INCLUDE} ${HUFFMAN_INCLUDE} ${HPACK_INCLUDE} ${HUFFMAN_SRC} ${FRAME_SRC} ${HPACK_SRC} ${PROTO_SRC} ${KV_SRC} ${AUTH_SRC} ${ETCD_RPC_SRC} ${GRPC_SRC} -lprotobuf-c -o test_http2 test_http2.c http2.c
+		gcc -g -Wall -I. ${KV_INCLUDE} ${AUTH_INCLUDE} ${HMAP_INCLUDE} ${PROTO_INCLUDE} ${ETCD_INCLUDE} ${GRPC_INCLUDE} ${COMMON_INCLUDE} ${FRAME_INCLUDE} ${HUFFMAN_INCLUDE} ${HPACK_INCLUDE} ${HUFFMAN_SRC} ${FRAME_SRC} ${HPACK_SRC} ${KV_SRC} ${AUTH_SRC} ${HMAP_SRC} ${PROTO_SRC} ${ETCD_SRC} ${GRPC_SRC} -lprotobuf-c -o test_http2 test_http2.c http2.c
+

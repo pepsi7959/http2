@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <time.h>
 #include <sys/time.h>
+#include <netinet/tcp.h>
 
 #include "http2.h"
 #include "linkedlist.h"
@@ -59,6 +60,70 @@ static HTTP2_CLNT_ADDR *HTTP2_get_addr(HTTP2_NODE *hc){
     LINKEDLIST_REMOVE(hc->list_addr, addr);
     LINKEDLIST_APPEND(hc->list_addr, addr);
     return addr;
+}
+
+static HTTP2_STREAM *HTTP2_get_stream_info(HTTP2_CONNECTION *conn)
+{
+    HTTP2_STREAM *stream_info = NULL;
+    char         key_stream_id[512];
+    int          r;
+    TUPLE        *ptr_tuple = NULL;
+
+    sprintf(key_stream_id, "strmid:%lu", conn->frame_recv->streamID);
+    printf("HTTP2_get_stream_info : key [%s]\n", key_stream_id);
+    r = hmap_search(conn->stream_hmap_db, key_stream_id, strlen(key_stream_id), &ptr_tuple);
+    if (r == HMAP_SUCCESS)
+    {
+        stream_info = ptr_tuple->vals.val_custom;
+        printf("Use exist stream_info\n");
+    }
+    else
+    {
+        // return HTTP2_RET_ERR_DECODE;
+        stream_info = (HTTP2_STREAM*)malloc(sizeof(HTTP2_STREAM));
+        memset(stream_info, 0, sizeof(HTTP2_STREAM));
+        stream_info->s_ID = conn->frame_recv->streamID;
+        stream_info->s_usr_data = NULL;
+        stream_info->s_flow_control.pending_update   = 0;
+        stream_info->s_flow_control.pending_data     = 0;
+        stream_info->s_flow_control.limit            = INIT_WINDOWS_SIZE;
+        stream_info->send_quota.quota                = conn->max_send_quota;
+
+        // sprintf(key_stream_id, "strmid:%lu", stream_info->s_ID);
+        printf("HTTP2_get_stream_info create new stream_info : [usr_data=%p] [%s]\n", stream_info->s_usr_data, key_stream_id);
+        if( hmap_add(&conn->stream_hmap_db, key_stream_id, strlen(key_stream_id), 1, HMAP_DATA_TYPE_CUSTOM, stream_info, 0) < 0 ){
+                printf("Cannot store  : [%s]", key_stream_id);
+                // return -1;
+                return 0;
+        }
+    }
+    printf("HTTP2_get_stream_info : stream_info [usr_data=%p] [streamID=%lu]\n", stream_info->s_usr_data, stream_info->s_ID);
+    return stream_info;
+}
+
+static int HTTP2_remove_stream_info(HTTP2_CONNECTION *conn)
+{
+    HTTP2_STREAM *stream_info = NULL;
+    char         key_stream_id[512];
+    int          r;
+    TUPLE        *ptr_tuple = NULL;
+
+    sprintf(key_stream_id, "strmid:%lu", conn->frame_recv->streamID);
+    printf("HTTP2_remove_stream_info : key [%s]\n", key_stream_id);
+
+    r = hmap_search(conn->stream_hmap_db, key_stream_id, strlen(key_stream_id), &ptr_tuple);
+    if (r == HMAP_SUCCESS)
+    {
+        stream_info = ptr_tuple->vals.val_custom;
+        printf("HTTP2_remove_stream_info : Found target stream_info\n");
+        if (stream_info->s_usr_data == conn->usr_data)
+        {
+            conn->usr_data = NULL;
+        }
+        free(stream_info->s_usr_data);
+    }
+    r = hmap_delete(&conn->stream_hmap_db, key_stream_id, strlen(key_stream_id));
+    return r;
 }
 
 static int HTTP2_write_direct(HTTP2_CONNECTION *conn, char *error){
@@ -222,8 +287,18 @@ static int HTTP2_connect_setup_res(HTTP2_CONNECTION *conn, char *error){
         return HTTP2_RET_ERR_DECODE;
     }
     if(frame->type == HTTP2_FRAME_SETTINGS){
+       
+        /* Initialize window update frame */
+        unsigned char window_update_frame[32];
+        unsigned char buff[16];
+        int delta = INIT_CONN_WINDOWS_SIZE - INIT_WINDOWS_SIZE;
+        
+        memcpy(window_update_frame, HTTP2_DEFAULT_FRAME_WINDOWS, sizeof(HTTP2_DEFAULT_FRAME_WINDOWS));
+        HTTP2_insert_length(delta, 4, buff);                                                                            //Insert window size
+        memcpy(&window_update_frame[9], buff, 4);
+
         HTTP2_send_direct_to_buffer(conn, HTTP2_DEFAULT_FRAME_SETTING_ACK, sizeof(HTTP2_DEFAULT_FRAME_SETTING), error);
-        HTTP2_send_direct_to_buffer(conn, HTTP2_DEFAULT_FRAME_WINDOWS, sizeof(HTTP2_DEFAULT_FRAME_WINDOWS), error);
+        HTTP2_send_direct_to_buffer(conn, window_update_frame, sizeof(HTTP2_DEFAULT_FRAME_WINDOWS), error);
         r = HTTP2_write_direct(conn, error);
         HTTP2_FRAME_FREE(frame);
         if( r == HTTP2_RET_OK || r == HTTP2_RET_SENT){
@@ -239,10 +314,33 @@ static int HTTP2_connect_setup_res(HTTP2_CONNECTION *conn, char *error){
 int HTTP2_send_window_update(HTTP2_CONNECTION *conn, int streamID, int len, char *error){             
     unsigned char buff[16];
     unsigned char window_update_frame[32];
+    unsigned int window_update_size = 0;
+    if( streamID == 0){ 
+        /* Update quota of connection */
+        if( conn->flow_control.pending_update > conn->flow_control.limit/4 ){
+            window_update_size = conn->flow_control.pending_update;             //prepare window update size
+            conn->flow_control.pending_update  = 0;                             //Reset pending_update counter
+        }else{
+            return 0;                                                           //No need to update
+        }
+    }else{
+        /* Update quota of stream */
+        if( conn->stream_info->s_flow_control.pending_update > conn->stream_info->s_flow_control.limit/4 ){
+            //continue to update
+            window_update_size = conn->stream_info->s_flow_control.pending_update;             //prepare window update size
+            conn->stream_info->s_flow_control.pending_update  = 0;                             //Reset pending_update counter
+        }else{
+            return 0;
+        }
+        
+        // return 0;
+    }
+
+    printf("HTTP2_send_window_update [streamID %d] size[ %d]\n", streamID, window_update_size);
     memcpy(window_update_frame, HTTP2_DEFAULT_FRAME_WINDOWS, sizeof(HTTP2_DEFAULT_FRAME_WINDOWS));
     HTTP2_insert_length(streamID, 4, buff);
     memcpy(&window_update_frame[5], buff, 4);
-    HTTP2_insert_length(len, 4, buff);
+    HTTP2_insert_length(window_update_size, 4, buff);
     memcpy(&window_update_frame[9], buff, 4);
     (void) HTTP2_send_direct_to_buffer(conn, window_update_frame, sizeof(HTTP2_DEFAULT_FRAME_WINDOWS), error);
     return HTTP2_write_direct(conn, error); 
@@ -250,7 +348,7 @@ int HTTP2_send_window_update(HTTP2_CONNECTION *conn, int streamID, int len, char
 
 int HTTP2_open(HTTP2_NODE *hc, HTTP2_CONNECTION **hconn, char *error){ 
     char buff[256];
-    int ff, i, r, sk;
+    int ff, i, r, sk, len;
     struct addrinfo hints;
     struct addrinfo *res    = NULL;
     HTTP2_CONNECTION *conn  = NULL;
@@ -262,8 +360,7 @@ int HTTP2_open(HTTP2_NODE *hc, HTTP2_CONNECTION **hconn, char *error){
     }
     
     addr = HTTP2_get_addr(hc);
-    
-    if (addr->connection_count > addr->max_connection){
+    if (addr->connection_count >= addr->max_connection){
         sprintf(error, "HTTP2 connection exceeds[%d:%d]",addr->connection_count, addr->max_connection);
         return HTTP2_RET_MAX_CONNECTION;
     }
@@ -323,6 +420,16 @@ int HTTP2_open(HTTP2_NODE *hc, HTTP2_CONNECTION **hconn, char *error){
     }
     freeaddrinfo(res);
 
+    r = 1;
+    len = sizeof(r);
+    if (setsockopt (sk, IPPROTO_TCP, TCP_NODELAY, &r, len) != 0)
+    {
+        if (error!=NULL)
+            sprintf(error, "setsockopt return error [%s]", strerror (errno));
+        close(sk);
+        return HTTP2_RET_ERR_CONNECT;
+    }
+    
     for (i = 0; i < HTTP2_MAX_CONNECTION; ++i)
     {
         if (hc->connection_pool[i] == NULL)
@@ -349,6 +456,7 @@ int HTTP2_open(HTTP2_NODE *hc, HTTP2_CONNECTION **hconn, char *error){
     getsockname(sk, (struct sockaddr *) &local_address, &addr_size);
 
     (void) memset(conn, 0, sizeof(HTTP2_CONNECTION));
+    hmap_init(2048, &(conn->service_mapping_db));
     conn->ref_group         = (void *)hc;
     conn->no                = i;
     conn->sock              = sk;
@@ -367,7 +475,15 @@ int HTTP2_open(HTTP2_NODE *hc, HTTP2_CONNECTION **hconn, char *error){
     conn->usr_data          = NULL;
     conn->enc               = malloc(sizeof(DYNAMIC_TABLE));
     conn->dec               = malloc(sizeof(DYNAMIC_TABLE));
-    
+
+    conn->flow_control.pending_update   = 0;
+    conn->flow_control.pending_data     = 0;
+    conn->flow_control.limit            = INIT_CONN_WINDOWS_SIZE;
+    conn->max_send_quota                = DEFAULT_WINDOWS_SIZE;
+    conn->send_quota.quota              = DEFAULT_WINDOWS_SIZE;
+    conn->max_streams                   = hc->max_concurrence;
+    conn->stream_count                  = 0;
+
     memset(conn->enc, 0, sizeof(DYNAMIC_TABLE));
     memset(conn->dec, 0, sizeof(DYNAMIC_TABLE));
     
@@ -385,6 +501,10 @@ int HTTP2_open(HTTP2_NODE *hc, HTTP2_CONNECTION **hconn, char *error){
     LINKEDLIST_APPEND(hc->wait_queue, conn);
     ++(hc->connection_count);
     ++(addr->connection_count);
+
+    conn->stream_hmap_db = NULL;
+    r = hmap_init(hc->max_concurrence*2, &conn->stream_hmap_db);
+    printf("HTTP2_open : r = %d   conn->stream_hmap_db = %p\n", r, conn->stream_hmap_db);
 
     if (hconn!=NULL) *hconn = conn;
     return HTTP2_RET_OK;
@@ -486,6 +606,7 @@ int HTTP2_write(HTTP2_CONNECTION *conn, char *error){
     conn->w_buffer->cur += r;
     if (conn->w_buffer->cur < conn->w_buffer->len){
         conn->write_time = time(NULL);
+        return HTTP2_RET_REQUIRE_WRITE;
     }else{
         conn->w_buffer->cur = 0;
         conn->w_buffer->len = 0;
@@ -639,7 +760,9 @@ int HTTP2_close(HTTP2_NODE *hc, int no, char *error){
     }
 
     if (conn->usr_data != NULL){
+        printf("free conn->usr_data\n");
         free(conn->usr_data);
+        conn->usr_data = NULL;
     }
 
     if (conn->enc != NULL){
@@ -658,7 +781,19 @@ int HTTP2_close(HTTP2_NODE *hc, int no, char *error){
         if (error!=NULL)
             sprintf(error, "close socket return error [%s]", strerror(errno));
         ret = HTTP2_RET_ERR_CONNECT;
+        conn->sock = -1;
     }
+
+    if(conn->stream_hmap_db != NULL)
+    {
+        hmap_destroy(&conn->stream_hmap_db);
+    }
+    
+    if (conn->service_mapping_db != NULL)
+    {
+        hmap_destroy(&(conn->service_mapping_db));
+    }
+    
     free(conn);
     return ret;
 }
@@ -681,7 +816,7 @@ int HTTP2_decode(HTTP2_CONNECTION *conn, char *error){
     if( conn->r_buffer == NULL || (conn->r_buffer->len < MINIMUM_FRAME_SIZE) ){
         return HTTP2_RETURN_NEED_MORE_DATA;
     }
-    
+    printf("r_buffer [len = %lu] [cur = %lu] \n", conn->r_buffer->len, conn->r_buffer->cur);
     ret = HTTP2_frame_decode(conn->r_buffer, &(conn->frame_recv), error);
     
     if( ret == HTTP2_RETURN_NEED_MORE_DATA){
@@ -697,8 +832,15 @@ int HTTP2_decode(HTTP2_CONNECTION *conn, char *error){
         case HTTP2_FRAME_DATA:
             printf("Obtained HTTP2_FRAME_DATA Frame\n");
             if( conn->frame_recv->data_playload != NULL && conn->frame_recv->data_playload->data != NULL){
-                HTTP2_BUFFER *data = (HTTP2_BUFFER*) conn->frame_recv->data_playload->data;
-                //TODO: reallocate memory here
+                HTTP2_BUFFER    *data = (HTTP2_BUFFER*) conn->frame_recv->data_playload->data;
+                int             r;
+                conn->stream_info = HTTP2_get_stream_info(conn);
+                if(conn->stream_info == NULL)
+                {
+                    return HTTP2_RET_ERR_DECODE;
+                }
+
+                conn->usr_data = conn->stream_info->s_usr_data;
                 if( conn->usr_data == NULL ){ 
                     ALLOCATE_BUFFER( conn->usr_data, data->len );
                     conn->usr_data->cur = 0;
@@ -706,10 +848,20 @@ int HTTP2_decode(HTTP2_CONNECTION *conn, char *error){
                 }else{
                     ALLOCATE_BUFFER( conn->usr_data, data->len );
                 }
+                conn->stream_info->s_usr_data = conn->usr_data;
+                printf("HTTP2_decode : usr_data [conn=%p]  [stream_info=%p]\n", conn->usr_data, conn->stream_info->s_usr_data);
+                printf("HTTP2_decode : len      [conn=%lu] [stream_info=%lu]\n", conn->usr_data->len, conn->stream_info->s_usr_data->len);
+                printf("HTTP2_decode : size     [conn=%lu] [stream_info=%lu]\n", conn->usr_data->size, conn->stream_info->s_usr_data->size);
+
                 memcpy(conn->usr_data->data + conn->usr_data->len, data->data, data->len);
                 conn->usr_data->len += data->len;
 
-                int r = HTTP2_send_window_update(conn, conn->frame_recv->streamID, data->len, error);
+                /* Acumulate received data */
+                conn->flow_control.pending_update += data->len;
+                conn->stream_info->s_flow_control.pending_update += data->len;
+
+                // r = HTTP2_send_window_update(conn, conn->frame_recv->streamID, data->len, error);
+                r = HTTP2_send_window_update(conn, conn->stream_info->s_ID, data->len, error);
                 if( r != HTTP2_RET_OK && r != HTTP2_RET_SENT){
                     printf("HTTP2_send_window_update error : %s", error);
                 }
@@ -718,17 +870,26 @@ int HTTP2_decode(HTTP2_CONNECTION *conn, char *error){
                     printf("HTTP2_send_window_update error : %s", error);
                 }
             }
-            conn->concurrent_count--;
+            // conn->concurrent_count--;
             break;
         case HTTP2_FRAME_HEADES:
             printf("Flags: %d\n", conn->frame_recv->flags);
             printf("Obtained HTTP2_FRAME_HEADES Frame\n");
+            if(conn->frame_recv->frame_headers_flags.end_stream == 1)
+            {
+                HTTP2_remove_stream_info(conn);
+                conn->concurrent_count--;
+                conn->stream_count--;
+            }
             break;
         case HTTP2_FRAME_PRIORITY:
             printf("Obtained HTTP2_FRAME_PRIORITY Frame\n");
             break;
         case HTTP2_FRAME_RST_STREAM:
             printf("Obtained HTTP2_FRAME_RST_STREAM Frame\n");
+            HTTP2_remove_stream_info(conn);
+            conn->concurrent_count--;
+            conn->stream_count--;
             break;
         case HTTP2_FRAME_SETTINGS:
             if( conn->frame_recv->flags == 0){
@@ -750,6 +911,7 @@ int HTTP2_decode(HTTP2_CONNECTION *conn, char *error){
             break;  
         case HTTP2_FRAME_WINDOW_UPDATE:
             printf("Obtained HTTP2_FRAME_WINDOW_UPDATE Frame\n");
+            HTTP2_handle_window_update(conn, error);
             break;
         case HTTP2_FRAME_CONTINUATION:
             printf("Obtained HTTP2_FRAME_CONTINUATION Frame\n");
@@ -884,10 +1046,22 @@ int HTTP2_insert_length(unsigned int len, int nlen, unsigned char *data){
 
 int HTTP2_send_message(HTTP2_NODE *hc, HTTP2_CONNECTION *conn, HTTP2_BUFFER *header_block, int hflags, HTTP2_BUFFER *data, int bflag, char *error){
 
-    if( header_block->len + data->len> (conn->w_buffer->size - conn->w_buffer->len) ){
-        //TODO allocate wbuffer
-        if(error != NULL) sprintf(error, "Not enough buffer");
-        return HTTP2_RET_ERR_MEMORY;
+    HTTP2_STREAM    *stream_info = NULL;
+    char key_stream_id[512];
+    int required_size   = 9                 /* size of header frame */
+                        + header_block->len /* size of header */
+                        + 9                 /* size of data frame */
+                        + data->len         /* size of data */
+                        + 1                 /* compress flag of GRPC */
+                        + 4                 /* size of GRPC */
+                        ;
+    if( required_size > (conn->w_buffer->size - conn->w_buffer->len) ){
+        /* The writen bufffer will be allocated as HTTP2_MAX_BUFFER_SISE bytes */
+        HTTP2_alloc_buffer(&conn->w_buffer, (required_size > HTTP2_MAX_BUFFER_SISE)?required_size:HTTP2_MAX_BUFFER_SISE);
+        if( conn->w_buffer == NULL ){
+            if(error != NULL) sprintf(error, "Cannot allocate buffer, Require (%d) bytes", (header_block->len + data->len));
+            return HTTP2_RET_ERR_MEMORY;
+        }
     }
     
     /**** Create HEADERS frame ****/
@@ -959,9 +1133,34 @@ int HTTP2_send_message(HTTP2_NODE *hc, HTTP2_CONNECTION *conn, HTTP2_BUFFER *hea
         memcpy(&conn->w_buffer->data[conn->w_buffer->len], data->data, data->len );
         conn->w_buffer->len += data->len;
     }
+
+    conn->usr_data = NULL;
+
+    stream_info = (HTTP2_STREAM*)malloc(sizeof(HTTP2_STREAM));
+    memset(stream_info, 0, sizeof(HTTP2_STREAM));
+    stream_info->s_ID = conn->streamID;
+    stream_info->s_usr_data = NULL;
+    stream_info->s_flow_control.pending_update   = 0;
+    stream_info->s_flow_control.pending_data     = 0;
+    stream_info->s_flow_control.limit            = INIT_WINDOWS_SIZE;
+    stream_info->send_quota.quota                = conn->max_send_quota;
+
+    sprintf(key_stream_id, "strmid:%lu", stream_info->s_ID);
+    printf("HTTP2_send_message : [usr_data=%p] [%s]\n", stream_info->s_usr_data, key_stream_id);
+
+    if( hmap_add(&conn->stream_hmap_db, key_stream_id, strlen(key_stream_id), 1, HMAP_DATA_TYPE_CUSTOM, stream_info, 0) < 0 ){
+        printf("Cannot store  : [%s]", key_stream_id);
+        return -1;
+    }
     
+    conn->stream_info = stream_info;
     conn->streamID  += 2;
     conn->concurrent_count++;
+
+    conn->stream_count++;
+    conn->send_quota.quota -= data->len;
+    conn->stream_info->send_quota.quota -= data->len;
+
     return HTTP2_RET_OK;
     
 }
@@ -1129,3 +1328,60 @@ int HTTP2_service_create(HTTP2_SERVICE **service, char *service_name, char *erro
     
     return HTTP2_RET_OK;
 }
+
+int HTTP2_handle_window_update(HTTP2_CONNECTION *conn, char *error){
+
+    HTTP2_STREAM *stream_info               = NULL;
+    HTTP2_PLAYLOAD_WINDOW_UPDATE *playload  = NULL;
+
+    if(conn == NULL){
+        if(error != NULL) sprintf(error, "conn is NULL");
+        return HTTP2_RET_ERR_MEMORY;
+    }
+
+    if(conn->frame_recv == NULL || conn->frame_recv->playload == NULL ){
+        if(error != NULL) sprintf(error, "Frame or Playload is NULL");
+        return HTTP2_RET_ERR_MEMORY;
+    }
+
+    playload = (HTTP2_PLAYLOAD_WINDOW_UPDATE*) conn->frame_recv->playload;
+
+    if( conn->frame_recv->streamID == 0 ){              //Update quota connection
+        conn->send_quota.quota += playload->window_size_increment;
+        printf("increase quota of connection : %d, window size : %d\n", conn->send_quota.quota, playload->window_size_increment);
+    }else{                                              //Update quota stream
+        stream_info = HTTP2_get_stream_info(conn);
+        if(stream_info == NULL)
+        {
+            if(error != NULL){
+                sprintf(error, "cannot found streamID : %u", conn->frame_recv->streamID);
+            }
+            return HTTP2_RET_ERR_DECODE;
+        }
+        stream_info->send_quota.quota += playload->window_size_increment;
+        printf("increase quota of stream[%d] : %d, window size : %d\n", conn->frame_recv->streamID, stream_info->send_quota.quota, playload->window_size_increment);
+    }
+
+    return HTTP2_RET_OK;
+}
+
+int HTTP2_is_connection_ready(HTTP2_CONNECTION *conn){
+
+    if( conn->stream_count >= conn->max_streams ){
+        return HTTP2_RET_MAX_STREAM;
+    }
+
+    return HTTP2_RET_OK;
+}
+
+int HTTP2_opertate_headers();
+
+int HTTP2_handle_data();
+
+int HTTP2_handle_RSTstream();
+
+int HTTP2_handle_settings();
+
+int HTTP2_handle_ping();
+
+int HTTP2_handle_go_away();
