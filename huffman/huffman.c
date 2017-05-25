@@ -64,7 +64,7 @@ int hf_byte_encode(unsigned char ch, int remain, unsigned char *buff){
 	int i			= 0;
 	int codes		= HEX_TO_HF_CODE(ch);
 	int nbits		= HEX_TO_HF_CODE_LEN(ch);
-	printf("'%c'|codes(%d)|len(%d)\n", ch, codes, nbits );
+	//printf("'%c'|codes(%d)|len(%d)\n", ch, codes, nbits );
 	for(;;){
 		if( remain > nbits){
 			t = (unsigned char)(codes << (remain-nbits));

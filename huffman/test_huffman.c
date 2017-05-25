@@ -95,15 +95,18 @@ int test_hf_string_encode(char *bin){
 	printf("prefix				: %d\n", 0);
 	hf_string_encode(bin, (int)strlen(bin), 0, bout, &sz);
 	printf("size  				: %d\n", sz);
-	if( bout[0] == 0x62 &&
-		bout[1] == 0xb8 &&
-		bout[2] == 0xd7 &&
-		bout[3] == 0xbe &&
-		bout[4] == 0x20 &&
-		bout[5] == 0xb1 &&
-		bout[6] == 0x7c &&
-		bout[7] == 0xff &&
-		sz == 0x8
+	if( bout[0] == 0x1d &&
+		bout[1] == 0x75 &&
+		bout[2] == 0xd0 &&
+		bout[3] == 0x62 &&
+		bout[4] == 0x0d &&
+		bout[5] == 0x26 &&
+		bout[6] == 0x3d &&
+		bout[7] == 0x4C &&
+		bout[8] == 0x4d &&
+		bout[9] == 0x65 &&
+		bout[10] == 0x64 &&
+		sz == 0xb
 	){
         return 1;
 	}else{
@@ -156,7 +159,7 @@ void test_all(){
 			test_hf_integer_encode_b()?"\033[1;37\033[1;42mPASS\033[0m":"\033[1;31mFAILED\033[0m");
     printf("test_hf_string_encode():%s\n",
 			test_hf_string_encode("/pb.D21/Do")?"\033[1;37\033[1;42mPASS\033[0m":"\033[1;31mFAILED\033[0m");
-    printf("test_hf_string_decode():%s\n",
+    printf("test_hf_string_encode():%s\n",
             test_hf_string_decode("application/grpc")?"\033[1;37\033[1;42mPASS\033[0m":"\033[1;31mFAILED\033[0m");
     UNIT_TEST(test_hf_string_decode_6bytes());
 }
