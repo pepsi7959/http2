@@ -9,6 +9,13 @@
 
 static Pb__Request req;
 
+void hex_sprintf(char *data, int size, char *out){
+    int i ;
+    for (i = 0; i < size; i++)  {
+        sprintf(&out[i*2],"%02x", data[i]);
+    }
+}
+
 int GRPC_get_scope(const char *scope){
     if( strcmp(scope, "base") == 0){
         return PB__SEARCH_SCOPE__BaseObject;
@@ -41,6 +48,8 @@ int GRPC_LDAP_modify_operation_mapping(int mod_type){
             return PB__ENTRY_METHOD__Delete;
         case 2 ://replace 
             return PB__ENTRY_METHOD__Replace;
+        case 3 ://increase
+            return PB__ENTRY_METHOD__Increase;
         default:
             return PB__ENTRY_METHOD__Unknown;
     }
@@ -53,26 +62,26 @@ int GRPC_LDAP_modify_operation_mapping(int mod_type){
  */
 char *
 strnstr(s, find, slen)
-    const char *s;
-    const char *find;
-    size_t slen;
+	const char *s;
+	const char *find;
+	size_t slen;
 {
-    char c, sc;
-    size_t len;
+	char c, sc;
+	size_t len;
 
-    if ((c = *find++) != '\0') {
-        len = strlen(find);
-        do {
-            do {
-                if (slen-- < 1 || (sc = *s++) == '\0')
-                    return (NULL);
-            } while (sc != c);
-            if (len > slen)
-                return (NULL);
-        } while (strncmp(s, find, len) != 0);
-        s--;
-    }
-    return ((char *)s);
+	if ((c = *find++) != '\0') {
+		len = strlen(find);
+		do {
+			do {
+				if (slen-- < 1 || (sc = *s++) == '\0')
+					return (NULL);
+			} while (sc != c);
+			if (len > slen)
+				return (NULL);
+		} while (strncmp(s, find, len) != 0);
+		s--;
+	}
+	return ((char *)s);
 }
 
 int GRPC_gen_entry(Pb__Entry **entry,char *dn, char *objectclass, char *attr[128], int attr_len, char *error){
@@ -433,6 +442,17 @@ int GRPC_gen_add_request(uint64_t gid, unsigned int tid, GRPC_BUFFER **buffer, c
     req.n_attributes       = 0;
     req.entry              = entry;
     
+    if( (flags & 0x2) ){
+        Pb__ControlTypeString control;
+        pb__control_type_string__init(&control);
+        control.controltype = "2.16.840.1.113730.3.4.2";
+        control.has_criticality = 0;
+        control.criticality = 0;
+        control.controlvalue = NULL;
+        req.controlstring = &control;
+    }
+    
+    
     len = pb__request__get_packed_size(&req);
     
     if(*buffer == NULL){
@@ -577,13 +597,112 @@ int GRPC_gen_search_request(uint64_t gid, unsigned int tid, GRPC_BUFFER **buffer
 
 }
 
+// int GRPC_gen_tx_begin_request(uint64_t gid, unsigned int tid, GRPC_BUFFER **buffer, char *error){
+//     //Generate Request
+//     static Pb__TxBeginRequest req;
+//     int len                 = 0;
+//     pb__tx_begin_request__init(&req);
+    
+//     req.has_id             = 1;
+//     req.id                 = tid;
+   
+//     len = pb__tx_begin_request__get_packed_size(&req);
+    
+//     if(*buffer == NULL){
+//         *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*len);
+//         (*buffer)->size    = len;
+//         (*buffer)->len     = 0;
+//     }
+    
+//     if( len > (*buffer)->size - (*buffer)->len ){
+//         //reallocate buffer
+//         if( error != NULL ) sprintf(error, "len(%d) buffer_size(%d) buffer_len(%d) Insufficient buffer!!", len, (*buffer)->size, (*buffer)->len);
+//         return GRPC_RET_UNIMPLEMENT;
+//     }
+    
+//     if( pb__tx_begin_request__pack(&req, (*buffer)->data+((*buffer)->len)) != len ){
+//         if( error != NULL ) sprintf(error, "pb__tx_begin_request__pack return invalid length");
+//         return GRPC_RET_INVALID_LENGTH;
+//     }
+//     (*buffer)->len += len;
+    
+//     return GRPC_RET_OK;
+// }
+
+// int GRPC_gen_tx_commit_request(uint64_t gid, unsigned int tid, unsigned int transaction_id, GRPC_BUFFER **buffer, char *error){
+//     //Generate Request
+//     static Pb__TxCommitRequest req;
+//     int len                 = 0;
+//     pb__tx_commit_request__init(&req);
+    
+//     req.has_id             = 1;
+//     req.id                 = tid;
+//     req.has_tid            = 1;
+//     req.tid                = transaction_id;
+   
+//     len = pb__tx_commit_request__get_packed_size(&req);
+    
+//     if(*buffer == NULL){
+//         *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*len);
+//         (*buffer)->size    = len;
+//         (*buffer)->len     = 0;
+//     }
+    
+//     if( len > (*buffer)->size - (*buffer)->len ){
+//         //reallocate buffer
+//         if( error != NULL ) sprintf(error, "len(%d) buffer_size(%d) buffer_len(%d) Insufficient buffer!!", len, (*buffer)->size, (*buffer)->len);
+//         return GRPC_RET_UNIMPLEMENT;
+//     }
+    
+//     if( pb__tx_commit_request__pack(&req, (*buffer)->data+((*buffer)->len)) != len ){
+//         if( error != NULL ) sprintf(error, "pb__tx_commit_request__pack return invalid length");
+//         return GRPC_RET_INVALID_LENGTH;
+//     }
+//     (*buffer)->len += len;
+    
+//     return GRPC_RET_OK;
+// }
+
+// int GRPC_gen_tx_rollback_request(uint64_t gid, unsigned int tid, unsigned int transaction_id, GRPC_BUFFER **buffer, char *error){
+//     //Generate Request
+//     static Pb__TxRollbackRequest req;
+//     int len                 = 0;
+//     pb__tx_rollback_request__init(&req);
+    
+//     req.has_id             = 1;
+//     req.id                 = tid;
+//     req.has_tid            = 1;
+//     req.tid                = transaction_id;
+   
+//     len = pb__tx_rollback_request__get_packed_size(&req);
+    
+//     if(*buffer == NULL){
+//         *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*len);
+//         (*buffer)->size    = len;
+//         (*buffer)->len     = 0;
+//     }
+    
+//     if( len > (*buffer)->size - (*buffer)->len ){
+//         //reallocate buffer
+//         if( error != NULL ) sprintf(error, "len(%d) buffer_size(%d) buffer_len(%d) Insufficient buffer!!", len, (*buffer)->size, (*buffer)->len);
+//         return GRPC_RET_UNIMPLEMENT;
+//     }
+    
+//     if( pb__tx_rollback_request__pack(&req, (*buffer)->data+((*buffer)->len)) != len ){
+//         if( error != NULL ) sprintf(error, "pb__tx_rollback_request__pack return invalid length");
+//         return GRPC_RET_INVALID_LENGTH;
+//     }
+//     (*buffer)->len += len;
+    
+//     return GRPC_RET_OK;
+// }
 char * GRPC_GetAttributeValues(Pb__Entry *entry, char *find_attr){
     int i;
     for(i = 0; i < entry->n_attributes; i++) {
         if ( strcmp( entry->attributes[i]->name, find_attr) == 0 ){
-            return entry->attributes[i]->values[0];
-        }
-    }
+			return entry->attributes[i]->values[0];
+		}
+	}
     return "";
 }
 
@@ -714,8 +833,8 @@ static int GRPC_valuelist_add (VALLIST **vallist, char value[MAX_ATTR_VALUE_SIZE
     return GRPC_RET_OK;
 }
 
-int GRPC_get_message_response(Pb__Response **response, GRPC_BUFFER *data, char *error){
 #define SKIP_ENCODINGFLAG_SIZE    5
+int GRPC_get_message_response(Pb__Response **response, GRPC_BUFFER *data, char *error){
     int tmp_int         = 0;
     Pb__Response *res   = NULL;
         
@@ -741,9 +860,11 @@ int GRPC_get_message_response(Pb__Response **response, GRPC_BUFFER *data, char *
     else if( (tmp_int+SKIP_ENCODINGFLAG_SIZE) > data->len){
         printf("Need more data to unpack [%d] > [%d]\n", tmp_int, data->len);
         if( error != NULL ){ 
-            sprintf(error, "Need more data to unpack [%d] > [%d]\n", tmp_int, data->len);
-        } 
-        return GRPC_RET_NEED_MORE_DATA;
+            char buff[MINIMUM_FRAME_SIZE];
+            hex_sprintf(data->data, MINIMUM_FRAME_SIZE, buff);
+            sprintf(error, "Need more data to unpack [%d] > [%d], raw frame[0x%s]", tmp_int, data->len, buff);
+       	} 
+	    return GRPC_RET_NEED_MORE_DATA;
     }
     
     data->cur += SKIP_ENCODINGFLAG_SIZE;//skipe encode flage and size
@@ -952,7 +1073,7 @@ int GRPC_get_ldap_response(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *e
                 slen = sprintf(sbuff1, "%s", attr->values[k]);
                 *(sbuff1+slen) = 0;
                 soffset = sindex = stotal = 0;
-                *sbuff2 ="";
+                sbuff2[0] = 0;
                 sp_bs = sp_dq = NULL;
 
                 do{
@@ -963,11 +1084,11 @@ int GRPC_get_ldap_response(LDAP_RESULT **ldap_result, GRPC_BUFFER *data, char *e
 
                     if (sp_bs != sp_dq)
                     {
-                        if(((int)sp_bs<(int)sp_dq) && (sp_bs != NULL))
+                        if((sp_bs<sp_dq) && (sp_bs != NULL))
                         {
                             soffset = sp_bs - sbuff1;
                         }
-                        else if(((int)sp_bs>(int)sp_dq) && (sp_dq != NULL))
+                        else if((sp_bs>sp_dq) && (sp_dq != NULL))
                         {
                             soffset = sp_dq - sbuff1;
                         }
@@ -1112,6 +1233,7 @@ int GRPC_get_ldap_response_from_Pb(LDAP_RESULT **ldap_result, Pb__Response *resp
     char *ref_tmp        = (char*)malloc(sizeof(char)*2*buf_len);
     Pb__Entry *entry;
 
+    memset(ref_tmp, 0,sizeof(char)*2*buf_len);
     i_start = 0;
     i_diff = 0;
     while(processed<n_entries)    
@@ -1198,9 +1320,9 @@ int GRPC_get_ldap_response_from_Pb(LDAP_RESULT **ldap_result, Pb__Response *resp
 
                 GRPC_valuelist_add(&vlist, attr->values[k], error);
                 slen = sprintf(sbuff1, "%s", attr->values[k]);
-                *(sbuff1+slen) = 0;
+                sbuff1[slen] = 0;
                 soffset = sindex = stotal = 0;
-                *sbuff2 ="";
+                sbuff2[0] = 0;
                 sp_bs = sp_dq = NULL;
 
                 do{
@@ -1211,11 +1333,11 @@ int GRPC_get_ldap_response_from_Pb(LDAP_RESULT **ldap_result, Pb__Response *resp
 
                     if (sp_bs != sp_dq)
                     {
-                        if(((int)sp_bs<(int)sp_dq) && (sp_bs != NULL))
+                        if(( sp_bs < sp_dq ) && (sp_bs != NULL))
                         {
                             soffset = sp_bs - sbuff1;
                         }
-                        else if(((int)sp_bs>(int)sp_dq) && (sp_dq != NULL))
+                        else if(( sp_bs > sp_dq) && (sp_dq != NULL))
                         {
                             soffset = sp_dq - sbuff1;
                         }
@@ -1261,6 +1383,7 @@ int GRPC_get_ldap_response_from_Pb(LDAP_RESULT **ldap_result, Pb__Response *resp
                 blen += sprintf((char *)(buf->data+blen), "]");
             }
         }//!-- end for loop attribute
+        strcpy(result->matchedDN, entry->dn);
         tmp_obj->alist = alist;
         LINKEDLIST_APPEND(result->ldap_object, tmp_obj);
         blen += sprintf((char *)(buf->data+blen), "}");
@@ -1516,3 +1639,683 @@ int tmp_int = 0;
     etcdserverpb__watch_response__free_unpacked(res, NULL);
     return GRPC_RET_OK;
 }
+
+int GRPC_gen_tx_begin_request(uint64_t gid, unsigned int tid, GRPC_BUFFER **buffer, char *error){  
+    //Generate Request
+    static Pb__TxBeginRequest req;
+    int len                 = 0;
+    pb__tx_begin_request__init(&req);
+    
+    req.has_id             = 1;
+    req.id                 = tid;
+    
+    len = pb__tx_begin_request__get_packed_size(&req);
+    
+    if(*buffer == NULL){
+        *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*len);
+        (*buffer)->size    = len;
+        (*buffer)->len     = 0;
+    }
+    
+    if( len > (*buffer)->size - (*buffer)->len ){
+        //reallocate buffer
+        if( error != NULL ) sprintf(error, "len(%d) buffer_size(%d) buffer_len(%d) Insufficient buffer!!", len, (*buffer)->size, (*buffer)->len);
+        return GRPC_RET_UNIMPLEMENT;
+    }
+    
+    if( pb__tx_begin_request__pack(&req, (*buffer)->data+((*buffer)->len)) != len ){
+        if( error != NULL ) sprintf(error, "pb__request__pack return invalid length");
+        return GRPC_RET_INVALID_LENGTH;
+    }
+    (*buffer)->len += len;
+    
+    return GRPC_RET_OK;
+
+}
+
+int GRPC_get_tx_begin_response(Pb__TxBeginResponse **response, GRPC_BUFFER *data, char *error){
+#define SKIP_ENCODINGFLAG_SIZE    5
+    int tmp_int         = 0;
+    Pb__TxBeginResponse *res   = NULL;
+        
+    if( response == NULL ){
+        if( error != NULL ) sprintf(error, "**response is NULL");
+        return GRPC_RET_INVALID_PARAMETER;
+    }
+    
+    if( data == NULL ){
+        if( error != NULL ) sprintf(error, "*data is NULL");
+        return GRPC_RET_INVALID_PARAMETER;
+    }
+
+    READBYTE(data->data, data->cur+1, 4, tmp_int); //1 is skiping encoding flage, 3 is number of size.
+    printf("[%d] > [%d]\n", tmp_int, data->len);
+    if(tmp_int < 0)
+    {
+        data->len = 0;
+        data->cur = 0;
+        if( error != NULL ) sprintf(error, "pb invalid length");
+        return GRPC_RET_INVALID_LENGTH; 
+    }
+    else if( (tmp_int+SKIP_ENCODINGFLAG_SIZE) > data->len){
+        printf("Need more data to unpack [%d] > [%d]\n", tmp_int, data->len);
+        if( error != NULL ){ 
+            sprintf(error, "Need more data to unpack [%d] > [%d]\n", tmp_int, data->len);
+        } 
+        return GRPC_RET_NEED_MORE_DATA;
+    }
+    
+    data->cur += SKIP_ENCODINGFLAG_SIZE;//skipe encode flage and size
+    
+    res = pb__tx_begin_response__unpack(NULL, data->len-data->cur, data->data+data->cur);
+    
+    data->cur += tmp_int;
+    memmove(data->data, data->data+data->cur, data->len-data->cur);
+    data->len = data->len-data->cur;
+    data->cur = 0;
+    
+    if( res == NULL )
+    {
+        if( error != NULL ) sprintf(error, "pb__tx_begin_response__unpack return error");
+        return GRPC_RET_ERR_UNPACK;
+    }
+    else
+    {
+        *response = res;
+        return GRPC_RET_OK;
+    }
+}
+
+int GRPC_gen_tx_rollback_request(uint64_t gid, unsigned int tid, uint64_t trans_id, GRPC_BUFFER **buffer, char *error){  
+    //Generate Request
+    static Pb__TxRollbackRequest req;
+    int len                 = 0;
+    pb__tx_rollback_request__init(&req);
+    
+    req.has_id              = 1;
+    req.id                  = tid;
+
+    req.has_tid             = 1;
+    req.tid                 = trans_id;
+    
+    len = pb__tx_rollback_request__get_packed_size(&req);
+    
+    if(*buffer == NULL){
+        *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*len);
+        (*buffer)->size    = len;
+        (*buffer)->len     = 0;
+    }
+    
+    if( len > (*buffer)->size - (*buffer)->len ){
+        //reallocate buffer
+        if( error != NULL ) sprintf(error, "len(%d) buffer_size(%d) buffer_len(%d) Insufficient buffer!!", len, (*buffer)->size, (*buffer)->len);
+        return GRPC_RET_UNIMPLEMENT;
+    }
+    
+    if( pb__tx_rollback_request__pack(&req, (*buffer)->data+((*buffer)->len)) != len ){
+        if( error != NULL ) sprintf(error, "pb__request__pack return invalid length");
+        return GRPC_RET_INVALID_LENGTH;
+    }
+    (*buffer)->len += len;
+    
+    return GRPC_RET_OK;
+
+}
+
+int GRPC_get_tx_rollback_response(Pb__TxRollbackResponse **response, GRPC_BUFFER *data, char *error){
+#define SKIP_ENCODINGFLAG_SIZE    5
+    int tmp_int         = 0;
+    Pb__TxRollbackResponse *res   = NULL;
+        
+    if( response == NULL ){
+        if( error != NULL ) sprintf(error, "**response is NULL");
+        return GRPC_RET_INVALID_PARAMETER;
+    }
+    
+    if( data == NULL ){
+        if( error != NULL ) sprintf(error, "*data is NULL");
+        return GRPC_RET_INVALID_PARAMETER;
+    }
+
+    READBYTE(data->data, data->cur+1, 4, tmp_int); //1 is skiping encoding flage, 3 is number of size.
+    printf("[%d] > [%d]\n", tmp_int, data->len);
+    if(tmp_int < 0)
+    {
+        data->len = 0;
+        data->cur = 0;
+        if( error != NULL ) sprintf(error, "pb invalid length");
+        return GRPC_RET_INVALID_LENGTH; 
+    }
+    else if( (tmp_int+SKIP_ENCODINGFLAG_SIZE) > data->len){
+        printf("Need more data to unpack [%d] > [%d]\n", tmp_int, data->len);
+        if( error != NULL ){ 
+            sprintf(error, "Need more data to unpack [%d] > [%d]\n", tmp_int, data->len);
+        } 
+        return GRPC_RET_NEED_MORE_DATA;
+    }
+    
+    data->cur += SKIP_ENCODINGFLAG_SIZE;//skipe encode flage and size
+    
+    res = pb__tx_rollback_response__unpack(NULL, data->len-data->cur, data->data+data->cur);
+    
+    data->cur += tmp_int;
+    memmove(data->data, data->data+data->cur, data->len-data->cur);
+    data->len = data->len-data->cur;
+    data->cur = 0;
+    
+    if( res == NULL )
+    {
+        if( error != NULL ) sprintf(error, "pb__tx_begin_response__unpack return error");
+        return GRPC_RET_ERR_UNPACK;
+    }
+    else
+    {
+        *response = res;
+        return GRPC_RET_OK;
+    }
+}
+
+
+int GRPC_gen_tx_commit_request(uint64_t gid, unsigned int tid, uint64_t trans_id, GRPC_BUFFER **buffer, char *error){  
+    //Generate Request
+    static Pb__TxCommitRequest req;
+    int len                 = 0;
+    pb__tx_commit_request__init(&req);
+    
+    req.has_id              = 1;
+    req.id                  = tid;
+
+    req.has_tid             = 1;
+    req.tid                 = trans_id;
+    
+    len = pb__tx_commit_request__get_packed_size(&req);
+    
+    if(*buffer == NULL){
+        *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*len);
+        (*buffer)->size    = len;
+        (*buffer)->len     = 0;
+    }
+    
+    if( len > (*buffer)->size - (*buffer)->len ){
+        //reallocate buffer
+        if( error != NULL ) sprintf(error, "len(%d) buffer_size(%d) buffer_len(%d) Insufficient buffer!!", len, (*buffer)->size, (*buffer)->len);
+        return GRPC_RET_UNIMPLEMENT;
+    }
+    
+    if( pb__tx_commit_request__pack(&req, (*buffer)->data+((*buffer)->len)) != len ){
+        if( error != NULL ) sprintf(error, "pb__request__pack return invalid length");
+        return GRPC_RET_INVALID_LENGTH;
+    }
+    (*buffer)->len += len;
+    
+    return GRPC_RET_OK;
+
+}
+
+int GRPC_get_tx_commit_response(Pb__TxCommitResponse **response, GRPC_BUFFER *data, char *error){
+#define SKIP_ENCODINGFLAG_SIZE    5
+    int tmp_int         = 0;
+    Pb__TxCommitResponse *res   = NULL;
+        
+    if( response == NULL ){
+        if( error != NULL ) sprintf(error, "**response is NULL");
+        return GRPC_RET_INVALID_PARAMETER;
+    }
+    
+    if( data == NULL ){
+        if( error != NULL ) sprintf(error, "*data is NULL");
+        return GRPC_RET_INVALID_PARAMETER;
+    }
+
+    READBYTE(data->data, data->cur+1, 4, tmp_int); //1 is skiping encoding flage, 3 is number of size.
+    printf("[%d] > [%d]\n", tmp_int, data->len);
+    if(tmp_int < 0)
+    {
+        data->len = 0;
+        data->cur = 0;
+        if( error != NULL ) sprintf(error, "pb invalid length");
+        return GRPC_RET_INVALID_LENGTH; 
+    }
+    else if( (tmp_int+SKIP_ENCODINGFLAG_SIZE) > data->len){
+        printf("Need more data to unpack [%d] > [%d]\n", tmp_int, data->len);
+        if( error != NULL ){ 
+            sprintf(error, "Need more data to unpack [%d] > [%d]\n", tmp_int, data->len);
+        } 
+        return GRPC_RET_NEED_MORE_DATA;
+    }
+    
+    data->cur += SKIP_ENCODINGFLAG_SIZE;//skipe encode flage and size
+    
+    res = pb__tx_commit_response__unpack(NULL, data->len-data->cur, data->data+data->cur);
+    
+    data->cur += tmp_int;
+    memmove(data->data, data->data+data->cur, data->len-data->cur);
+    data->len = data->len-data->cur;
+    data->cur = 0;
+    
+    if( res == NULL )
+    {
+        if( error != NULL ) sprintf(error, "pb__tx_commit_response__unpack return error");
+        return GRPC_RET_ERR_UNPACK;
+    }
+    else
+    {
+        *response = res;
+        return GRPC_RET_OK;
+    }
+}
+
+int GRPC_gen_tx_search_request(uint64_t gid, unsigned int tid, uint64_t trans_id, GRPC_BUFFER **buffer, const char *base_dn, const char *scope, const char *filter, char **attrs, int nattrs, int flags, int deref, char *error){
+   
+#define RECURSIVE_SHIFT     0
+#define QGET_SHIFT          1
+
+#define CHECK_FLAG(_flag_no_)          (flags & (1<<_flag_no_))   
+    //Generate Request
+    static Pb__Request req;
+    int len                 = 0;
+    pb__request__init(&req);
+    
+    req.has_id             = 1;
+    req.id                 = tid;
+    req.has_gid            = 1;
+    req.gid                = gid;
+    req.basedn             = (char *)base_dn;
+    req.filter             = (char *)filter;
+    req.dn                 = NULL;
+    
+    req.has_method         = 1;
+    //req.method             = PB__RESTMETHOD__QGET; //CHECK_FLAG(QGET_SHIFT) ? PB__RESTMETHOD__QGET : PB__RESTMETHOD__GET;
+    req.method             = CHECK_FLAG(QGET_SHIFT) ? PB__RESTMETHOD__QGET : PB__RESTMETHOD__GET;
+    
+    //TODO: add function get_scope_from_string()
+    req.has_scope          = 1;
+    req.scope              = GRPC_get_scope(scope);
+    req.has_recursive      = 1;
+    req.recursive          = CHECK_FLAG(RECURSIVE_SHIFT) ? 1 : 0; // flags bit 0 instead of recursive.
+    
+    req.has_derefaliases   = 1;
+    req.derefaliases       = deref;
+    
+    //TODO: add attribute filter
+    req.n_attributes       = nattrs;
+    req.attributes         = attrs;
+
+    req.has_tid            = 1;
+    req.tid                = trans_id;
+    req.has_txmethod       = 1;
+    req.txmethod           = PB__TX_METHOD__TXDO;
+    
+    len = pb__request__get_packed_size(&req);
+    
+    if(*buffer == NULL){
+        *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*len);
+        (*buffer)->size    = len;
+        (*buffer)->len     = 0;
+    }
+    
+    if( len > (*buffer)->size - (*buffer)->len ){
+        //reallocate buffer
+        if( error != NULL ) sprintf(error, "len(%d) buffer_size(%d) buffer_len(%d) Insufficient buffer!!", len, (*buffer)->size, (*buffer)->len);
+        return GRPC_RET_UNIMPLEMENT;
+    }
+    
+    if( pb__request__pack(&req, (*buffer)->data+((*buffer)->len)) != len ){
+        if( error != NULL ) sprintf(error, "pb__request__pack return invalid length");
+        return GRPC_RET_INVALID_LENGTH;
+    }
+    (*buffer)->len += len;
+    
+    return GRPC_RET_OK;
+
+}
+
+int GRPC_gen_tx_modify_request(uint64_t gid, unsigned int tid, uint64_t trans_id, GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *entry, int flags, char *error){
+    
+    //Generate Request
+    static Pb__Request req;
+    //Pb__Request *req        = calloc(1,sizeof(Pb__Request));
+    int len                 = 0;
+    pb__request__init(&req);
+    
+    req.has_id             = 1;
+    req.id                 = tid;
+    req.has_gid            = 1;
+    req.gid                = gid;
+    req.basedn             = NULL;
+    req.dn                 = NULL;
+    req.filter             = "(objectClass=*)";
+    req.has_method         = 1;
+    req.method             = PB__RESTMETHOD__PUT;
+    
+    req.n_attributes       = 0;
+    req.entry              = entry;
+
+    if( (flags & 0x2) ){
+        Pb__ControlTypeString control;
+        pb__control_type_string__init(&control);
+        control.controltype = "2.16.840.1.113730.3.4.2";
+        control.has_criticality = 0;
+        control.criticality = 0;
+        control.controlvalue = NULL;
+        req.controlstring = &control;
+    }
+
+    req.has_tid            = 1;
+    req.tid                = trans_id;
+    req.has_txmethod       = 1;
+    req.txmethod           = PB__TX_METHOD__TXDO;
+    
+    len = pb__request__get_packed_size(&req);
+    
+    if(*buffer == NULL){
+        *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*len);
+        (*buffer)->size    = len;
+        (*buffer)->len     = 0;
+    }
+    
+    if( len > (*buffer)->size - (*buffer)->len ){
+        //reallocate buffer
+        if( error != NULL ) sprintf(error, "Insufficient buffer!!");
+        return GRPC_RET_UNIMPLEMENT;
+    }
+    
+    if( pb__request__pack(&req, (*buffer)->data) != len ){
+        if( error != NULL ) sprintf(error, "pb__request__pack return invalid length");
+        return GRPC_RET_INVALID_LENGTH;
+    }
+    (*buffer)->len = len;
+
+    GRPC_free_mod_entry_ldap( entry );
+    //free( req );
+    
+    return GRPC_RET_OK;
+}
+
+int GRPC_gen_tx_delete_request(uint64_t gid, unsigned int tid, uint64_t trans_id, GRPC_BUFFER **buffer, char *base_dn, int flags, char *error){
+   
+    //Generate Delete Request
+    int len                 = 0;
+    pb__request__init(&req);
+    
+    req.has_id             = 1;
+    req.id                 = tid;
+    req.has_gid            = 1;
+    req.gid                = gid;
+    req.filter             = NULL;
+    req.basedn             = (char *)base_dn;
+    
+    req.has_method         = 1;
+    req.method             = PB__RESTMETHOD__DELETE;
+    
+    //TODO: add function get_scope_from_string()
+    req.has_scope          = 0;
+    req.scope              = PB__SEARCH_SCOPE__BaseObject;
+    
+    if( (flags & 0x1) ){
+        req.has_recursive      = 1;
+        req.recursive          = 1;
+   }
+    
+    //TODO: add attribute filter
+    req.n_attributes       = 0;
+    req.attributes         = NULL;
+    
+    //TODO: ControlString
+    if( (flags & 0x2) ){
+        Pb__ControlTypeString control;
+        pb__control_type_string__init(&control);
+        control.controltype = "2.16.840.1.113730.3.4.2";
+        control.has_criticality = 1;
+        control.criticality = 1;
+        control.controlvalue = NULL;
+        req.controlstring = &control;
+    }
+
+    req.has_tid            = 1;
+    req.tid                = trans_id;
+    req.has_txmethod       = 1;
+    req.txmethod           = PB__TX_METHOD__TXDO;
+    
+    len = pb__request__get_packed_size(&req);
+    
+    if(*buffer == NULL){
+        *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*len);
+        (*buffer)->size    = len;
+        (*buffer)->len     = 0;
+    }
+    
+    if( len > (*buffer)->size - (*buffer)->len ){
+        //reallocate buffer
+        if( error != NULL ) sprintf(error, "Insufficient buffer!!");
+        return GRPC_RET_UNIMPLEMENT;
+    }
+    
+    if( pb__request__pack(&req, (*buffer)->data) != len ){
+        if( error != NULL ) sprintf(error, "pb__request__pack return invalid length");
+        return GRPC_RET_INVALID_LENGTH;
+    }
+    (*buffer)->len = len;
+    return GRPC_RET_OK;
+}
+
+int GRPC_gen_tx_add_request(uint64_t gid, unsigned int tid, uint64_t trans_id, GRPC_BUFFER **buffer, const char *base_dn, Pb__Entry *entry, int flags, char *error){
+   
+    //Generate Request
+    static Pb__Request req;
+    //Pb__Request *req        = calloc(1,sizeof(Pb__Request));
+    int len                 = 0;
+    pb__request__init(&req);
+    req.has_id             = 1;
+    req.id                 = tid;
+    req.has_gid             = 1;
+    req.gid                = gid;
+    req.basedn             = NULL;
+    req.dn                 = NULL;
+    req.filter             = "(objectClass=*)";
+    req.has_method         = 1;
+    req.method             = PB__RESTMETHOD__POST;
+    
+    req.n_attributes       = 0;
+    req.entry              = entry;
+
+    req.has_tid            = 1;
+    req.tid                = trans_id;
+    req.has_txmethod       = 1;
+    req.txmethod           = PB__TX_METHOD__TXDO;
+    
+    len = pb__request__get_packed_size(&req);
+    
+    if(*buffer == NULL){
+        *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*len);
+        (*buffer)->size    = len;
+        (*buffer)->len     = 0;
+    }
+    
+    if( len > (*buffer)->size - (*buffer)->len ){
+        //reallocate buffer
+        if( error != NULL ) sprintf(error, "Insufficient buffer!!");
+        return GRPC_RET_UNIMPLEMENT;
+    }
+    
+    if( pb__request__pack(&req, (*buffer)->data) != len ){
+        if( error != NULL ) sprintf(error, "pb__request__pack return invalid length");
+        return GRPC_RET_INVALID_LENGTH;
+    }
+    (*buffer)->len = len;
+    
+    GRPC_free_entry_ldap( entry );
+
+    return GRPC_RET_OK;
+}
+
+int HECTOR_gen_search_request(uint64_t gid, unsigned int tid, GRPC_BUFFER **buffer, const char *app_name, const char *app_method, const char *filter, char *error){
+    //Generate Request
+    static Pb__Request req;
+    int len                 = 0;
+    pb__request__init(&req);
+
+    req.has_id                 = 1;
+    req.id                     = tid;
+
+    req.has_gid                 = 1;
+    req.gid                     = gid;
+    
+    req.has_method              = 1;
+    req.method                  = PB__RESTMETHOD__GET;
+
+    req.has_applicationversion  = 1;
+    req.applicationversion  = 10;
+    
+    req.applicationname         = (char *)app_name;
+    req.applicationmethod       = (char *)app_method;
+
+    req.filter                  = (char *)filter;
+
+    
+    len = pb__request__get_packed_size(&req);
+    
+    if(*buffer == NULL){
+        *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*len);
+        (*buffer)->size    = len;
+        (*buffer)->len     = 0;
+    }
+    
+    if( len > (*buffer)->size - (*buffer)->len ){
+        //reallocate buffer
+        if( error != NULL ) sprintf(error, "len(%d) buffer_size(%d) buffer_len(%d) Insufficient buffer!!", len, (*buffer)->size, (*buffer)->len);
+        return GRPC_RET_UNIMPLEMENT;
+    }
+    
+    if( pb__request__pack(&req, (*buffer)->data+((*buffer)->len)) != len ){
+        if( error != NULL ) sprintf(error, "pb__request__pack return invalid length");
+        return GRPC_RET_INVALID_LENGTH;
+    }
+    (*buffer)->len += len;
+    
+    return GRPC_RET_OK;
+
+}
+
+int HECTOR_gen_post_request(uint64_t gid, unsigned int tid, GRPC_BUFFER **buffer, const char *app_name, const char *app_method, const char *payload, char *error){
+    //Generate Request
+    static Pb__Request req;
+    int len                 = 0;
+    pb__request__init(&req);
+    
+    req.has_id                 = 1;
+    req.id                     = tid;
+
+    req.has_gid                 = 1;
+    req.gid                     = gid;
+    
+    req.has_method              = 1;
+    req.method                  = PB__RESTMETHOD__POST;
+
+    req.applicationname         = app_name;
+    req.applicationmethod       = app_method;
+    
+    req.has_applicationversion  = 1;
+    req.applicationversion  = 10;
+    
+    req.applicationpayload      = (char *)payload;
+
+    
+    len = pb__request__get_packed_size(&req);
+    
+    if(*buffer == NULL){
+        *buffer            = malloc(sizeof(GRPC_BUFFER)+sizeof(char)*len);
+        (*buffer)->size    = len;
+        (*buffer)->len     = 0;
+    }
+    
+    if( len > (*buffer)->size - (*buffer)->len ){
+        //reallocate buffer
+        if( error != NULL ) sprintf(error, "len(%d) buffer_size(%d) buffer_len(%d) Insufficient buffer!!", len, (*buffer)->size, (*buffer)->len);
+        return GRPC_RET_UNIMPLEMENT;
+    }
+    
+    if( pb__request__pack(&req, (*buffer)->data+((*buffer)->len)) != len ){
+        if( error != NULL ) sprintf(error, "pb__request__pack return invalid length");
+        return GRPC_RET_INVALID_LENGTH;
+    }
+    (*buffer)->len += len;
+    
+    return GRPC_RET_OK;
+
+}
+
+int HECTOR_get_response(unsigned int *tid, GRPC_BUFFER *data, char *error){
+    
+    GRPC_BUFFER *buf        = NULL;
+    Pb__Response *response  = NULL;
+    int tmp_int             = 0;
+    int blen                = 0;
+    
+    if( data == NULL ){
+        if( error != NULL ) sprintf(error, "*data is NULL");
+        return GRPC_RET_INVALID_PARAMETER;
+    }
+    
+    READBYTE(data->data, data->cur+1, 4, tmp_int); //1 is skiping encoding flage, 3 is number of size.
+    printf("[%d] > [%d]\n", tmp_int, data->len);
+    if( tmp_int > data->len){
+        
+        printf("Need more data to unpack [%d] > [%d]\n", tmp_int, data->len);
+        return GRPC_RET_NEED_MORE_DATA;
+    }
+    
+    data->cur += 5;//skipe encode flage and size
+        
+    // if( json_response == NULL ){
+    //     if( error != NULL ) sprintf(error, "**json_response is NULL");
+    //     return GRPC_RET_INVALID_PARAMETER;
+    // }
+    
+    response  = pb__response__unpack(NULL, data->len-data->cur, data->data+data->cur);
+    
+    if( response == NULL ){
+        if( error != NULL ) sprintf(error, "pb__response__unpack return error");
+        return GRPC_RET_ERR_UNPACK;
+    }
+    
+    if(response->has_statuscode)
+    {
+        printf("statuscode [%d]", response->statuscode);
+    }
+    
+    if(response->status != NULL)
+    {
+        printf("status [%s]", response->status);
+    }
+
+    if(response->statuscodemessage != NULL)
+    {
+        printf("statuscodemessage [%s]", response->statuscodemessage);
+    }
+
+    if(response->message != NULL)
+    {
+        printf("message [%s]",  response->message);
+    }
+
+    if(response->data != NULL)
+    {
+        printf("data [%s]", response->data);
+    }
+    
+    if (response->has_count)
+    {
+        printf("count [%d]", response->count);
+    }
+
+    data->cur += tmp_int;
+    memmove(data->data, data->data+data->cur, data->len-data->cur);
+    data->len = data->len-data->cur;
+    data->cur = 0;
+    
+    pb__response__free_unpacked(response, NULL);
+    
+    return GRPC_RET_OK;
+}
+
