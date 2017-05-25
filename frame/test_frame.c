@@ -142,8 +142,8 @@ int test_HTTP2_frame_decode(){
     ASSERT( playload->data != NULL);
     HTTP2_FRAME_BUFFER* data = (HTTP2_FRAME_BUFFER*) playload->data;
     ASSERT(data == playload->data);
-    ASSERT( data->len == (frame->length)-playload->padding_length);
-    ASSERT( memcmp( data->data, &HTTP2_DEFAULT_FRAME_DATA[9], data->len) == 0 ); // 9=frame length
+    ASSERT( data->len == (frame->length-1)-playload->padding_length);
+    ASSERT( memcmp( data->data, &HTTP2_DEFAULT_FRAME_DATA[9+1], data->len) == 0 ); // 9+1 frame length, padding flag
 
     return TEST_RESULT_SUCCESSED;
 }

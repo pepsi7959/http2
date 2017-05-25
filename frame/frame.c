@@ -45,9 +45,13 @@ int HTTP2_PLAYLOAD_FREE( HTTP2_FRAME_FORMAT *frame ){
             }
             break;
         case HTTP2_FRAME_RST_STREAM:
+            break;
         case HTTP2_FRAME_PUSH_PROMISE:
+            break;
         case HTTP2_FRAME_PING:
+            break;
         case HTTP2_FRAME_GOAWAY:
+            break;
         case HTTP2_FRAME_WINDOW_UPDATE:
             if( frame->update_playload != NULL ){
                 free( frame->update_playload );
@@ -55,6 +59,7 @@ int HTTP2_PLAYLOAD_FREE( HTTP2_FRAME_FORMAT *frame ){
             }
             break;
         case HTTP2_FRAME_CONTINUATION:
+            break;
         default:
             //TODO: free data if there are data on the playload
             break;
@@ -232,11 +237,13 @@ int HTTP2_playload_decode(HTTP2_FRAME_BUFFER *buffer, HTTP2_FRAME_FORMAT *frame,
             return HTTP2_RETURN_UNIMPLEMENTED;
         case HTTP2_FRAME_WINDOW_UPDATE:
         {
-            HTTP2_PLAYLOAD_WINDOW_UPDATE *playload = malloc(1 * sizeof(HTTP2_PLAYLOAD_WINDOW_UPDATE));
-            playload->reserved                  = 0;
-            playload->window_size_increment     = 0;
-            frame->playload = playload;
-            frame->update_playload = playload;
+            int c = 0;
+            READBYTE(buffer->data, buffer->cur, 4, c);  //4 is number of length 
+            HTTP2_PLAYLOAD_WINDOW_UPDATE *playload  = malloc(1 * sizeof(HTTP2_PLAYLOAD_WINDOW_UPDATE));
+            playload->reserved                      = 0x80 & (char)buffer->data[buffer->cur];
+            playload->window_size_increment         = c;
+            frame->playload                         = playload;
+            frame->update_playload                  = playload;
         }
         break;
         case HTTP2_FRAME_CONTINUATION:
@@ -322,6 +329,7 @@ int HTTP2_frame_decode(HTTP2_FRAME_BUFFER *buffer, HTTP2_FRAME_FORMAT **frame, c
         buffer->cur = 0;
     }else{
         nframe->playload = NULL;
+        nframe->data_playload = NULL; /* In case of no any payload, must be intiailize the value as NULL */
         buffer->len = buffer->len - buffer->cur;
         memmove(buffer->data, buffer->data+buffer->cur, buffer->len);
         buffer->cur = 0;

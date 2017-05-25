@@ -75,7 +75,7 @@ typedef struct HTTP2_PLAYLOAD_SETTINGS{
     unsigned int value;
 }HTTP2_PLAYLOAD_SETTINGS;
 
-typedef struct HTTP2_FRAME_FORMAT{
+/*typedef struct HTTP2_FRAME_FORMAT{
     struct HTTP2_FRAME_FORMAT *next;
     struct HTTP2_FRAME_FORMAT *prev;
     unsigned int length;            //24 bits
@@ -91,8 +91,101 @@ typedef struct HTTP2_FRAME_FORMAT{
         HTTP2_PLAYLOAD_SETTINGS         *settings_playload;
     };
     void * playload;
-
 }HTTP2_FRAME_FORMAT;
+
+typedef struct HTTP2_FRAME_FLAG{
+    union {
+        struct
+        {
+            unsigned int end_stream     : 1;
+            unsigned int unused_1_2     : 2;
+            unsigned int padded         : 1;
+            unsigned int unused_4_15    : 12;
+        }frame_data;
+
+        struct
+        {
+            unsigned int end_stream     : 1;
+            unsigned int unused_1       : 1;
+            unsigned int end_header     : 1;
+            unsigned int padded         : 1;
+            unsigned int unused_4_15    : 12;
+        }frame_headers;
+
+        struct
+        {
+            unsigned int unused_0_15    : 16;
+        }frame_priority;
+
+        struct
+        {
+            unsigned int unused_0_15    : 16;
+        }frame_window_update;
+
+        struct
+        {
+            unsigned int ack            : 1;
+            unsigned int unused_1_15    : 15;
+        }frame_settings;
+
+        unsigned int value;
+    };
+}HTTP2_FRAME_FLAG;*/
+
+typedef struct HTTP2_FRAME_FORMAT{
+    struct HTTP2_FRAME_FORMAT *next;
+    struct HTTP2_FRAME_FORMAT *prev;
+    unsigned int length;            //24 bits
+    int type;                       //8 bits
+    // int flags;                      //8 bits
+    union {
+        struct
+        {
+            unsigned int end_stream     : 1;
+            unsigned int unused_1_2     : 2;
+            unsigned int padded         : 1;
+            unsigned int unused_4_15    : 12;
+        }frame_data_flags;
+
+        struct
+        {
+            unsigned int end_stream     : 1;
+            unsigned int unused_1       : 1;
+            unsigned int end_header     : 1;
+            unsigned int padded         : 1;
+            unsigned int unused_4_15    : 12;
+        }frame_headers_flags;
+
+        struct
+        {
+            unsigned int unused_0_15    : 16;
+        }frame_priority_flags;
+
+        struct
+        {
+            unsigned int unused_0_15    : 16;
+        }frame_window_update_flags;
+
+        struct
+        {
+            unsigned int ack            : 1;
+            unsigned int unused_1_15    : 15;
+        }frame_settings_flags;
+
+        unsigned int flags;
+    };
+    int reserved;                    //1 bits
+    unsigned int streamID;          //31 bits
+    union {
+        HTTP2_PLAYLOAD_DATA             *data_playload;
+        HTTP2_PLOYLOAD_HEADERS          *headers_playload;
+        HTTP2_PLAYLOAD_PRIORITY         *priority_playload;
+        HTTP2_PLAYLOAD_WINDOW_UPDATE    *update_playload;
+        HTTP2_PLAYLOAD_SETTINGS         *settings_playload;
+    };
+    void * playload;
+}HTTP2_FRAME_FORMAT;
+
 
 HTTP2_FRAME_FORMAT * HTTP2_frame_create();
 int HTTP2_frame_decode(HTTP2_FRAME_BUFFER *buffer, HTTP2_FRAME_FORMAT **frame, char *error);
