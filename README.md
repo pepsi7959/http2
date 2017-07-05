@@ -21,7 +21,7 @@ The main purpose is to gain performance by using minimum HTTP/2 feature.
      make && make install
      ```
  * Installing the protobuf-c
-   - set PKG_CONFIG_PATH (__DONOT__ remember this step)
+   - set PKG_CONFIG_PATH (__DONOT__ forget this step)
       ```bash
       export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
       ```
@@ -43,3 +43,10 @@ The main purpose is to gain performance by using minimum HTTP/2 feature.
  
 # GRPC
 Besides http/2, The GRPC will be used for composing data. 
+
+## Generate source files from .proto
+  After installing the protobuf-cpp and protobuf-c, you can use `protoc-c` command.
+  ```bash
+  cd http2/proto
+  protoc-c --c_out=. helloworld.proto
+  ```
